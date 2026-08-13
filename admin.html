@@ -51,7 +51,70 @@
         <div class="card" id="card-gestao" style="display:none;">
           <div class="card-eyebrow">Gerenciar: <span id="comp-selecionada-nome"></span></div>
 
-          <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Código de convite: <strong class="mono" id="comp-codigo"></strong></p>
+         <div class="invite-box" style="
+  background:var(--bg-soft);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:18px;
+">
+
+  <div style="
+    font-size:11px;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    margin-bottom:6px;
+  ">
+    🔗 Convite da competição
+  </div>
+
+  <div
+    id="comp-codigo"
+    class="mono"
+    style="
+      font-size:26px;
+      font-weight:800;
+      letter-spacing:.12em;
+      margin-bottom:12px;
+    "
+  >
+    —
+  </div>
+
+  <div style="
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  ">
+
+    <button
+      class="btn btn-ghost"
+      id="btn-copiar-codigo"
+      type="button"
+    >
+      📋 Copiar código
+    </button>
+
+    <button
+      class="btn btn-primary"
+      id="btn-copiar-link"
+      type="button"
+    >
+      🔗 Copiar convite
+    </button>
+
+  </div>
+
+  <p style="
+    font-size:11px;
+    color:var(--text-muted);
+    margin:12px 0 0;
+  ">
+    Envie o convite para quem quiser participar desta competição.
+  </p>
+
+</div>
 
           <div class="field">
             <label>Adicionar participante por e-mail</label>
@@ -116,6 +179,63 @@
       document.getElementById('card-gestao').style.display = 'block';
       document.getElementById('comp-selecionada-nome').textContent = comp.nome;
       document.getElementById('comp-codigo').textContent = comp.codigo_convite;
+      // =====================================================
+// COPIAR CÓDIGO DO DESAFIO
+// =====================================================
+document.getElementById('btn-copiar-codigo').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(comp.codigo_convite);
+
+    mostrarToast(
+      'Código copiado!',
+      'success'
+    );
+  } catch (err) {
+    console.error(err);
+    mostrarToast(
+      'Não foi possível copiar o código.',
+      'error'
+    );
+  }
+};
+
+
+// =====================================================
+// COPIAR LINK COMPLETO DO CONVITE
+// =====================================================
+document.getElementById('btn-copiar-link').onclick = async () => {
+
+  const url = new URL(
+    'join.html',
+    window.location.href
+  );
+
+  url.searchParams.set(
+    'codigo',
+    comp.codigo_convite
+  );
+
+  try {
+
+    await navigator.clipboard.writeText(
+      url.toString()
+    );
+
+    mostrarToast(
+      'Link de convite copiado!',
+      'success'
+    );
+
+  } catch (err) {
+
+    console.error(err);
+
+    mostrarToast(
+      'Não foi possível copiar o link.',
+      'error'
+    );
+  }
+};
 
       const membros = await getCompetitionMembers(id);
       document.getElementById('lista-membros').innerHTML = membros.map((m) => `
