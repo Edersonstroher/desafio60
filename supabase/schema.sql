@@ -244,7 +244,7 @@ $$;
 -- membro da competição chamar essa função para ver o desempenho dos
 -- colegas (necessário para o ranking funcionar), mesmo sem ter permissão
 -- de SELECT direto na tabela weigh_ins de outra pessoa.
-drop function if exists public.fn_member_stats(uuid);
+drop function if exists public.fn_member_stats(uuid) cascade;
 create or replace function public.fn_member_stats(p_member_id uuid)
 returns table (
   competition_member_id uuid,
