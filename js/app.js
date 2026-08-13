@@ -50,8 +50,21 @@ export function iniciarMonitorOffline() {
 export function registrarServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {
+      navigator.serviceWorker.register('/sw.js').then((reg) => {
+        // Se já existe um SW ativo controlando a página, força checar
+        // atualização imediatamente (evita ficar preso em versão antiga).
+        reg.update();
+      }).catch(() => {
         /* ambiente sem suporte (ex.: file://) — ignora silenciosamente */
+      });
+
+      // Se o SW mudou, recarrega a página uma única vez para usar a versão nova.
+      let jaRecarregou = sessionStorage.getItem('desafio60_sw_reloaded');
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!jaRecarregou) {
+          sessionStorage.setItem('desafio60_sw_reloaded', '1');
+          window.location.reload();
+        }
       });
     });
   }
