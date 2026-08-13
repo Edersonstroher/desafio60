@@ -172,6 +172,23 @@
     iniciarMonitorOffline();
     try {
       const perfil = await getCurrentProfile();
+      // =====================================================
+// MOSTRAR PAINEL ADMIN SOMENTE PARA ADMINISTRADORES
+// =====================================================
+const souAdmin = await isCurrentUserAdmin();
+
+if (souAdmin) {
+  const linkAdmin = document.getElementById('link-admin');
+  const linkAdminMobile = document.getElementById('link-admin-mobile');
+
+  if (linkAdmin) {
+    linkAdmin.style.display = 'flex';
+  }
+
+  if (linkAdminMobile) {
+    linkAdminMobile.style.display = 'flex';
+  }
+}
       if (perfil?.tema) aplicarTema(perfil.tema);
 
       const minhas = await getMyCompetitions();
