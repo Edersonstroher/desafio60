@@ -279,35 +279,118 @@ document.getElementById('btn-copiar-link').onclick = async () => {
       }
     });
 
-    document.getElementById('btn-criar').addEventListener('click', async () => {
-      const nome = document.getElementById('nova-nome').value.trim();
-      const dataInicio = document.getElementById('nova-inicio').value;
-      const duracao = Number(document.getElementById('nova-duracao').value) || 60;
-      if (!nome || !dataInicio) {
-        mostrarToast('Preencha nome e data de início.', 'error');
-        return;
-      }
-      const dataFim = new Date(dataInicio);
-      dataFim.setDate(dataFim.getDate() + duracao - 1);
+   document.getElementById('btn-criar').addEventListener('click', async () => {
 
-      try {
-        await createCompetition({
-          nome,
-          descricao: document.getElementById('nova-desc').value.trim() || null,
-          data_inicio: dataInicio,
-          data_fim: dataFim.toISOString().slice(0, 10),
-          duracao_dias: duracao,
-          valor_inscricao: Number(document.getElementById('nova-valor').value) || 0,
-          criado_por: user.id,
-          status: 'DRAFT',
-        });
-        mostrarToast('Competição criada!', 'success');
-        carregarCompeticoes();
-      } catch (err) {
-        mostrarToast('Não foi possível criar a competição.', 'error');
-        console.error(err);
-      }
-    });
+  const nome =
+    document.getElementById('nova-nome').value.trim();
+
+  const descricao =
+    document.getElementById('nova-desc').value.trim() || null;
+
+  const dataInicio =
+    document.getElementById('nova-inicio').value;
+
+  const duracao =
+    Number(
+      document.getElementById('nova-duracao').value
+    ) || 60;
+
+  const valor =
+    Number(
+      document.getElementById('nova-valor').value
+    ) || 0;
+
+  if (!nome || !dataInicio) {
+
+    mostrarToast(
+      'Preencha nome e data de início.',
+      'error'
+    );
+
+    return;
+  }
+
+  const dataFim = new Date(dataInicio);
+
+  dataFim.setDate(
+    dataFim.getDate() + duracao - 1
+  );
+
+  const btn =
+    document.getElementById('btn-criar');
+
+  btn.disabled = true;
+  btn.textContent = 'Criando...';
+
+  try {
+
+    const novaCompeticao =
+      await createCompetition({
+
+        nome,
+
+        descricao,
+
+        data_inicio:
+          dataInicio,
+
+        data_fim:
+          dataFim
+            .toISOString()
+            .slice(0, 10),
+
+        duracao_dias:
+          duracao,
+
+        valor_inscricao:
+          valor,
+
+        criado_por:
+          user.id,
+
+        status:
+          'DRAFT'
+      });
+
+    mostrarToast(
+      '🏆 Competição criada!',
+      'success'
+    );
+
+    // Atualiza a lista
+    await carregarCompeticoes();
+
+    // Seleciona automaticamente a competição criada
+    const competicoesAtualizadas =
+      await listAllCompetitionsAdmin();
+
+    await selecionarCompeticao(
+      novaCompeticao.id,
+      competicoesAtualizadas
+    );
+
+    // Limpa formulário
+    document.getElementById('nova-nome').value = '';
+    document.getElementById('nova-desc').value = '';
+
+  } catch (err) {
+
+    console.error(err);
+
+    mostrarToast(
+      err.message ||
+      'Não foi possível criar a competição.',
+      'error'
+    );
+
+  } finally {
+
+    btn.disabled = false;
+    btn.textContent =
+      'Criar competição (rascunho)';
+  }
+
+});
 
     carregarCompeticoes();
   }
