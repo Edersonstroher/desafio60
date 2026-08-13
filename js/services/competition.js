@@ -2,12 +2,63 @@ import { supabase } from '../supabase.js';
 
 /** Todas as competições em que o usuário logado participa. */
 export async function getMyCompetitions() {
+  const {
+    data: { user },
+    error: authError
+  } = await supabase.auth.getUser();
+
+  if (authError) throw authError;
+
+  if (!user) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('competition_members')
-    .select('*, competitions(*)')
+    .select(`
+      id,
+      competition_id,
+      user_id,
+      peso_inicial_kg,
+      peso_inicial_congelado,
+      data_entrada,
+      elegivel_premio,
+      status,
+      created_at,
+      competitions (
+        id,
+        nome,
+        descricao,
+        data_inicio,
+        data_fim,
+        duracao_dias,
+        status,
+        valor_inscricao,
+        janela_inicio,
+        janela_fim,
+        consistencia_minima_pct,
+        codigo_convite
+      )
+    `)
+    .eq('user_id', user.id)
     .order('created_at', { ascending: false });
+
   if (error) throw error;
-  return data;
+
+  // Proteção adicional contra duplicação visual
+  const unicas = [];
+  const ids = new Set();
+
+  for (const item of data || []) {
+    if (!item.competitions) continue;
+
+    if (!ids.has(item.competitions.id)) {
+      ids.add(item.competitions.id);
+      unicas.push(item);
+    }
+  }
+
+  return unicas;
 }
 
 export async function getCompetition(competitionId) {
