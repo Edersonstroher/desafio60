@@ -73,10 +73,11 @@
     });
 
     if (error) {
-      erroBox.textContent = 'Não foi possível criar sua conta. ' + (error.message.includes('already registered') ? 'Esse e-mail já está cadastrado.' : 'Tente novamente.');
+      erroBox.textContent = 'Erro técnico (diagnóstico): ' + error.message + ' [status: ' + (error.status || '?') + ', code: ' + (error.code || '?') + ']';
       erroBox.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Criar conta';
+      console.error('Erro completo do Supabase:', error);
       return;
     }
 

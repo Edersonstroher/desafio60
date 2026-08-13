@@ -68,12 +68,11 @@
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
     if (error) {
-      erroBox.textContent = error.message.includes('Invalid login')
-        ? 'E-mail ou senha incorretos.'
-        : 'Não foi possível entrar. Verifique sua conexão e tente novamente.';
+      erroBox.textContent = 'Erro técnico (diagnóstico): ' + error.message + ' [status: ' + (error.status || '?') + ', code: ' + (error.code || '?') + ']';
       erroBox.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Entrar';
+      console.error('Erro completo do Supabase:', error);
       return;
     }
 
