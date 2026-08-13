@@ -10,7 +10,7 @@ const CACHE_NAME = 'desafio60-shell-v2';
 const APP_SHELL = [
   '/', '/index.html', '/login.html', '/cadastro.html', '/dashboard.html',
   '/competicao.html', '/ranking.html', '/pesagem.html', '/perfil.html',
-  '/admin.html', '/join.html',
+  '/admin.html', '/join.html', '/regras.html',
   '/css/style.css', '/css/responsive.css', '/css/components.css',
   '/manifest.json',
 ];

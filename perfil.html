@@ -20,6 +20,7 @@
     <a href="pesagem.html" data-nav="pesagem">⚖️ Registrar peso</a>
     <a href="ranking.html" data-nav="ranking">🏆 Ranking</a>
     <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="regras.html" data-nav="regras">📜 Regras</a>
     <a href="perfil.html" data-nav="perfil" class="active">👤 Perfil</a>
   </nav>
 
@@ -65,6 +66,10 @@
         </div>
       </div>
 
+      <button class="btn btn-ghost" id="btn-instalar-app" data-instalar-app style="margin-bottom:14px;">
+        📲 Instalar app na tela inicial
+      </button>
+
       <div class="card">
         <div class="card-eyebrow">Meu desempenho</div>
         <div class="stat-grid">
@@ -104,7 +109,7 @@
   import { getMemberStats } from './js/services/ranking.js';
   import { getHistory } from './js/services/weighin.js';
   import { calcularIMC, formatarKg, formatarData } from './js/calculations.js';
-  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin, capturarPromptDeInstalacao, acionarInstalacaoDoApp } from './js/app.js';
 
   marcarNavAtiva('perfil');
   const user = await requireAuth();
@@ -151,6 +156,8 @@
   });
 
   document.getElementById('btn-sair').addEventListener('click', encerrarSessaoEVoltarLogin);
+  capturarPromptDeInstalacao();
+  document.getElementById('btn-instalar-app').addEventListener('click', acionarInstalacaoDoApp);
 
   try {
     const minhas = await getMyCompetitions();

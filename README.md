@@ -72,10 +72,13 @@ No Netlify: **Site settings → Domain management → Add custom domain**, siga 
 
 ## 8. Instalar no celular
 
-Acesse a URL publicada pelo navegador do celular (Chrome/Android ou Safari/iOS):
+Duas formas:
 
-- **Android (Chrome)**: menu ⋮ → "Adicionar à tela inicial".
-- **iPhone (Safari)**: botão de compartilhar → "Adicionar à Tela de Início".
+**Pelo próprio app** (mais fácil): entre em **Perfil → 📲 Instalar app na tela inicial**. No Android/Chrome isso abre o instalador nativo direto. No iPhone/Safari, o app não pode acionar instalação automática (limitação da Apple), então ele mostra a instrução: toque no botão de compartilhar (□↑) e depois em **"Adicionar à Tela de Início"**.
+
+**Manual, direto pelo navegador:**
+- **Android (Chrome)**: menu ⋮ → "Adicionar à tela inicial" ou "Instalar app".
+- **iPhone (Safari)**: botão de compartilhar (□↑) → "Adicionar à Tela de Início". *(Precisa ser pelo Safari — Chrome no iPhone não tem essa opção.)*
 
 O `manifest.json` e o `sw.js` já deixam o app instalável e com abertura rápida (cache do app shell).
 
@@ -109,6 +112,7 @@ Duas formas:
   ranking.html           → ranking oficial + secundários + gráfico comparativo
   perfil.html            → dados pessoais, IMC, histórico, gráfico de evolução
   competicao.html        → "minhas competições"
+  regras.html             → regras do desafio explicadas (fórmula, consistência, desempate)
   join.html              → entrar via código de convite
   admin.html             → painel administrativo
   /css                   → style.css (design system), responsive.css, components.css

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="google" content="notranslate">
+<title>Regras — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+    <a href="dashboard.html" data-nav="dashboard">🏠 Início</a>
+    <a href="pesagem.html" data-nav="pesagem">⚖️ Registrar peso</a>
+    <a href="ranking.html" data-nav="ranking">🏆 Ranking</a>
+    <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="regras.html" data-nav="regras" class="active">📜 Regras</a>
+    <a href="perfil.html" data-nav="perfil">👤 Perfil</a>
+    <a href="admin.html" id="link-admin" style="display:none;">⚙️ Administração</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <a href="dashboard.html" class="icon-btn">←</a>
+      <div class="brand"><strong>📜 Regras</strong></div>
+      <div style="width:38px;"></div>
+    </div>
+
+    <div class="container">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-size:38px;">📜</div>
+        <h1 class="display" style="font-size:19px; margin-top:8px;">Como funciona o Desafio 60</h1>
+        <p style="color:var(--text-muted); font-size:13px; margin-top:6px;" id="nome-competicao-regras"></p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">🏆 Como se ganha</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          O campeão é quem tiver o <strong>maior percentual de peso perdido</strong> em relação ao peso inicial — não é quem perde mais quilos em número absoluto, e sim quem perde a maior <em>proporção</em> do próprio peso.
+        </p>
+        <p style="font-size:13px; color:var(--text-muted); margin:10px 0 0; font-family:var(--font-mono);">
+          % perdido = ((peso inicial − peso atual) / peso inicial) × 100
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">⚖️ Peso inicial</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          Seu peso inicial é <strong>a primeira pesagem que você registrar</strong> depois de entrar na competição. A partir daí, ele fica <strong>travado</strong> — nem você nem ninguém consegue alterá-lo depois (só um administrador, em caso de erro real, e isso fica registrado em log).
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">📈 "Peso atual" = média dos últimos 7 dias</div>
+        <p style="font-size:14px; line-height:1.6; margin:0 0 10px;">
+          Pra evitar que uma oscilação de um único dia (reter líquido, comer salgado, etc.) atrapalhe o ranking, seu "peso atual" no app não é a última pesagem isolada — é a <strong>média das suas últimas 7 pesagens válidas</strong>.
+        </p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">
+          Se você ainda não tem 7 pesagens registradas, a média usa as que existirem até agora.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">📅 Dia sem pesagem</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          Se você não se pesar num dia, esse dia <strong>simplesmente fica sem registro</strong> — o app nunca inventa ou repete um peso automaticamente. A média de 7 dias considera só as pesagens que realmente existem.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">🎯 Consistência e elegibilidade ao prêmio</div>
+        <p style="font-size:14px; line-height:1.6; margin:0 0 10px;">
+          Pra concorrer ao prêmio, você precisa se pesar em pelo menos <strong id="pct-consistencia">80%</strong> dos dias da competição.
+        </p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;" id="texto-min-dias">
+          Numa competição de 60 dias, isso equivale a 48 dias com pesagem registrada.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">🕐 Janela recomendada de pesagem</div>
+        <p style="font-size:14px; line-height:1.6; margin:0 0 10px;">
+          Recomendamos se pesar entre <strong id="janela-horario">04:00 e 10:00</strong>, de manhã, após ir ao banheiro e antes de comer ou beber — é quando o peso costuma ser mais estável e comparável entre os dias.
+        </p>
+        <p style="font-size:13px; color:var(--text-muted); margin:0;">
+          Pesar fora dessa janela <strong>não invalida</strong> o registro — só aparece um aviso 🟡 no seu histórico. A pesagem continua contando normalmente pra média e pro ranking.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">⚠️ Variação muito grande</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          Se um novo peso for muito diferente do seu último registro, o app avisa e pede confirmação antes de salvar — só pra evitar erro de digitação. Nada é bloqueado, você decide se confirma.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">🥇 Critérios de desempate</div>
+        <p style="font-size:14px; line-height:1.6; margin:0 0 10px;">Se dois ou mais participantes empatarem no percentual perdido, o desempate segue esta ordem:</p>
+        <ol style="font-size:14px; line-height:1.9; margin:0; padding-left:20px; color:var(--text);">
+          <li>Maior quantidade de kg perdidos</li>
+          <li>Maior consistência (% de dias com pesagem)</li>
+          <li>Maior sequência de dias seguidos se pesando</li>
+        </ol>
+        <p style="font-size:13px; color:var(--text-muted); margin:12px 0 0;">
+          Se ainda assim persistir empate absoluto, o prêmio é dividido entre os empatados.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">📊 IMC — apenas informativo</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          O app mostra seu IMC inicial, atual e a variação — mas ele é <strong>só uma informação de acompanhamento</strong>, nunca é usado para decidir o vencedor.
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">🔒 Correções e auditoria</div>
+        <p style="font-size:14px; line-height:1.6; margin:0;">
+          Você não consegue apagar ou editar uma pesagem já registrada. Se um valor foi digitado errado, só um administrador pode corrigir — e toda correção fica registrada, com data, motivo e o valor antigo/novo, para manter o processo transparente.
+        </p>
+      </div>
+
+      <div class="card" style="border-color:var(--accent);">
+        <div class="card-eyebrow">💡 Resumo rápido</div>
+        <p style="font-size:14px; line-height:1.8; margin:0;">
+          Abrir o app → ver o ranking → registrar o peso → acompanhar a evolução → voltar amanhã. É só isso. 🏆
+        </p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" data-nav="dashboard"><span class="ic">🏠</span>Início</a>
+  <a href="ranking.html" data-nav="ranking"><span class="ic">🏆</span>Ranking</a>
+  <a href="pesagem.html" data-nav="pesagem"><span class="ic">⚖️</span>Pesar</a>
+  <a href="perfil.html" data-nav="perfil"><span class="ic">👤</span>Perfil</a>
+</nav>
+
+<script type="module">
+  import { requireAuth } from './js/services/auth.js';
+  import { isCurrentUserAdmin } from './js/services/admin.js';
+  import { getMyCompetitions } from './js/services/competition.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+  marcarNavAtiva('regras');
+
+  const user = await requireAuth();
+  if (!user) throw new Error('não autenticado');
+
+  isCurrentUserAdmin().then((souAdmin) => {
+    if (souAdmin) {
+      const linkAdmin = document.getElementById('link-admin');
+      if (linkAdmin) linkAdmin.style.display = 'flex';
+    }
+  });
+
+  try {
+    const minhas = await getMyCompetitions();
+    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+    if (ativa) {
+      const comp = ativa.competitions;
+      document.getElementById('nome-competicao-regras').textContent = comp.nome;
+
+      const consistMin = Math.round(comp.consistencia_minima_pct || 80);
+      document.getElementById('pct-consistencia').textContent = `${consistMin}%`;
+
+      const diasMinimos = Math.ceil((consistMin / 100) * comp.duracao_dias);
+      document.getElementById('texto-min-dias').textContent =
+        `Numa competição de ${comp.duracao_dias} dias, isso equivale a ${diasMinimos} dias com pesagem registrada.`;
+
+      if (comp.janela_inicio && comp.janela_fim) {
+        document.getElementById('janela-horario').textContent =
+          `${comp.janela_inicio.slice(0,5)} e ${comp.janela_fim.slice(0,5)}`;
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    // Mesmo sem conseguir buscar dados da competição específica, as regras
+    // gerais continuam visíveis com os valores padrão (60 dias / 80% / 04:00-10:00).
+  }
+</script>
+</body>
+</html>

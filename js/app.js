@@ -74,3 +74,56 @@ export async function encerrarSessaoEVoltarLogin() {
   await supabase.auth.signOut();
   window.location.href = 'login.html';
 }
+
+// ---------------------------------------------------------------------
+// Instalação do app (PWA)
+// ---------------------------------------------------------------------
+let promptDeInstalacaoCapturado = null;
+
+/** Chame no carregamento de qualquer página para capturar o prompt nativo de instalação (Android/Chrome). */
+export function capturarPromptDeInstalacao() {
+  window.addEventListener('beforeinstallprompt', (evento) => {
+    evento.preventDefault();
+    promptDeInstalacaoCapturado = evento;
+    document.querySelectorAll('[data-instalar-app]').forEach((btn) => { btn.style.display = ''; });
+  });
+
+  window.addEventListener('appinstalled', () => {
+    promptDeInstalacaoCapturado = null;
+    mostrarToast('App instalado! Procure o ícone do Desafio 60 na sua tela inicial.', 'success');
+  });
+}
+
+function detectarPlataforma() {
+  const ua = navigator.userAgent || '';
+  const ehIOS = /iphone|ipad|ipod/i.test(ua);
+  const ehStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  return { ehIOS, ehStandalone };
+}
+
+/** Chame ao clicar no botão "Instalar app". Usa o prompt nativo quando disponível; senão mostra instrução manual (iOS). */
+export async function acionarInstalacaoDoApp() {
+  const { ehIOS, ehStandalone } = detectarPlataforma();
+
+  if (ehStandalone) {
+    mostrarToast('O app já está instalado neste dispositivo.', 'info');
+    return;
+  }
+
+  if (promptDeInstalacaoCapturado) {
+    promptDeInstalacaoCapturado.prompt();
+    const escolha = await promptDeInstalacaoCapturado.userChoice;
+    promptDeInstalacaoCapturado = null;
+    if (escolha.outcome !== 'accepted') {
+      mostrarToast('Instalação cancelada. Você pode tentar de novo quando quiser.', 'info');
+    }
+    return;
+  }
+
+  if (ehIOS) {
+    mostrarToast('No Safari: toque no botão de compartilhar (□↑) e depois em "Adicionar à Tela de Início".', 'info', 6000);
+    return;
+  }
+
+  mostrarToast('No menu do navegador (⋮), toque em "Adicionar à tela inicial" ou "Instalar app".', 'info', 6000);
+}
