@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perfil — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+    <a href="dashboard.html" data-nav="dashboard">🏠 Início</a>
+    <a href="pesagem.html" data-nav="pesagem">⚖️ Registrar peso</a>
+    <a href="ranking.html" data-nav="ranking">🏆 Ranking</a>
+    <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="perfil.html" data-nav="perfil" class="active">👤 Perfil</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <a href="dashboard.html" class="icon-btn">←</a>
+      <div class="brand"><strong>Perfil</strong></div>
+      <div style="width:38px;"></div>
+    </div>
+
+    <div class="container">
+      <div style="text-align:center; margin-bottom:22px;">
+        <div class="avatar-lg" style="margin:0 auto 10px;" id="avatar-inicial">?</div>
+        <h2 class="display" id="nome-perfil" style="font-size:19px;">—</h2>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Dados pessoais</div>
+        <div class="field">
+          <label for="nome-input">Nome</label>
+          <input type="text" id="nome-input">
+        </div>
+        <div class="field">
+          <label for="apelido-input">Apelido (exibido no ranking)</label>
+          <input type="text" id="apelido-input">
+        </div>
+        <div class="field">
+          <label for="altura-input">Altura (cm)</label>
+          <input type="number" id="altura-input" min="80" max="250">
+        </div>
+        <button class="btn btn-primary" id="btn-salvar-perfil">Salvar alterações</button>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Preferências</div>
+        <div class="list-row">
+          <span>Modo escuro</span>
+          <div class="switch" id="switch-tema"></div>
+        </div>
+        <div class="list-row">
+          <span>Modo provocação 🔥</span>
+          <div class="switch" id="switch-provocacao"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Meu desempenho</div>
+        <div class="stat-grid">
+          <div class="stat"><span class="valor" id="p-imc-inicial">—</span><span class="rotulo">IMC inicial</span></div>
+          <div class="stat"><span class="valor" id="p-imc-atual">—</span><span class="rotulo">IMC atual</span></div>
+          <div class="stat"><span class="valor" id="p-consistencia">—</span><span class="rotulo">Consistência</span></div>
+          <div class="stat"><span class="valor" id="p-sequencia">—</span><span class="rotulo">Melhor sequência</span></div>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-eyebrow" style="padding-left:8px;">Evolução do peso</div>
+        <canvas id="grafico-peso" height="200"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="card-eyebrow">Histórico de pesagens</div>
+        <div id="lista-historico"></div>
+      </div>
+
+      <button class="btn btn-ghost" id="btn-sair" style="margin-top:8px;">Sair da conta</button>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" data-nav="dashboard"><span class="ic">🏠</span>Início</a>
+  <a href="ranking.html" data-nav="ranking"><span class="ic">🏆</span>Ranking</a>
+  <a href="pesagem.html" data-nav="pesagem"><span class="ic">⚖️</span>Pesar</a>
+  <a href="perfil.html" data-nav="perfil" class="active"><span class="ic">👤</span>Perfil</a>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script type="module">
+  import { requireAuth, getCurrentProfile, updateProfile } from './js/services/auth.js';
+  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMemberStats } from './js/services/ranking.js';
+  import { getHistory } from './js/services/weighin.js';
+  import { calcularIMC, formatarKg, formatarData } from './js/calculations.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin } from './js/app.js';
+
+  marcarNavAtiva('perfil');
+  const user = await requireAuth();
+  if (!user) throw new Error('não autenticado');
+
+  const perfil = await getCurrentProfile();
+  aplicarTema(perfil?.tema || temaSalvoLocalmente());
+
+  document.getElementById('nome-perfil').textContent = perfil.apelido || perfil.nome;
+  document.getElementById('avatar-inicial').textContent = (perfil.nome || '?').charAt(0).toUpperCase();
+  document.getElementById('nome-input').value = perfil.nome || '';
+  document.getElementById('apelido-input').value = perfil.apelido || '';
+  document.getElementById('altura-input').value = perfil.altura_cm || '';
+
+  const switchTema = document.getElementById('switch-tema');
+  const switchProvocacao = document.getElementById('switch-provocacao');
+  switchTema.classList.toggle('on', (perfil.tema || 'dark') === 'dark');
+  switchProvocacao.classList.toggle('on', !!perfil.modo_provocacao);
+
+  switchTema.addEventListener('click', async () => {
+    const novoTema = switchTema.classList.contains('on') ? 'light' : 'dark';
+    switchTema.classList.toggle('on');
+    aplicarTema(novoTema);
+    await updateProfile({ tema: novoTema });
+  });
+
+  switchProvocacao.addEventListener('click', async () => {
+    const novoValor = !switchProvocacao.classList.contains('on');
+    switchProvocacao.classList.toggle('on');
+    await updateProfile({ modo_provocacao: novoValor });
+  });
+
+  document.getElementById('btn-salvar-perfil').addEventListener('click', async () => {
+    try {
+      await updateProfile({
+        nome: document.getElementById('nome-input').value.trim(),
+        apelido: document.getElementById('apelido-input').value.trim() || null,
+        altura_cm: Number(document.getElementById('altura-input').value) || null,
+      });
+      mostrarToast('Perfil atualizado!', 'success');
+    } catch {
+      mostrarToast('Não foi possível salvar. Tente novamente.', 'error');
+    }
+  });
+
+  document.getElementById('btn-sair').addEventListener('click', encerrarSessaoEVoltarLogin);
+
+  try {
+    const minhas = await getMyCompetitions();
+    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+    if (ativa) {
+      const stats = await getMemberStats(ativa.id);
+      const historico = await getHistory(ativa.id);
+
+      const imcInicial = calcularIMC(stats?.peso_inicial_kg, perfil.altura_cm);
+      const imcAtual = calcularIMC(stats?.media_movel_7, perfil.altura_cm);
+      document.getElementById('p-imc-inicial').textContent = imcInicial ?? '—';
+      document.getElementById('p-imc-atual').textContent = imcAtual ?? '—';
+      document.getElementById('p-consistencia').textContent = `${Math.round(stats?.consistencia_pct || 0)}%`;
+      document.getElementById('p-sequencia').textContent = `${stats?.melhor_sequencia || 0}d`;
+
+      document.getElementById('lista-historico').innerHTML = historico.length
+        ? [...historico].reverse().slice(0, 15).map((w) => `
+            <div class="list-row">
+              <span>${formatarData(w.data_pesagem)}</span>
+              <span class="mono">${formatarKg(w.peso_kg)}</span>
+              <span style="font-size:12px;">${w.dentro_da_janela ? '🟢' : '🟡'}</span>
+            </div>`).join('')
+        : '<p style="color:var(--text-muted); font-size:13px;">Nenhuma pesagem registrada ainda.</p>';
+
+      new Chart(document.getElementById('grafico-peso'), {
+        type: 'line',
+        data: {
+          labels: historico.map((w) => formatarData(w.data_pesagem)),
+          datasets: [{
+            label: 'Peso (kg)',
+            data: historico.map((w) => w.peso_kg),
+            borderColor: '#B9FF3A',
+            backgroundColor: 'rgba(185,255,58,0.15)',
+            fill: true,
+            tension: 0.3,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#8B9591', maxTicksLimit: 6 }, grid: { display: false } },
+            y: { ticks: { color: '#8B9591' }, grid: { color: '#232B28' } },
+          },
+        },
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+</script>
+</body>
+</html>

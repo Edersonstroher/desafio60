@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Registrar peso — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+    <a href="dashboard.html" data-nav="dashboard">🏠 Início</a>
+    <a href="pesagem.html" data-nav="pesagem" class="active">⚖️ Registrar peso</a>
+    <a href="ranking.html" data-nav="ranking">🏆 Ranking</a>
+    <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="perfil.html" data-nav="perfil">👤 Perfil</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <a href="dashboard.html" class="icon-btn">←</a>
+      <div class="brand"><strong>Registrar peso</strong></div>
+      <div style="width:38px;"></div>
+    </div>
+
+    <div class="container">
+      <h1 class="display" style="font-size:20px; text-align:center; margin-bottom:4px;">Registrar peso</h1>
+      <p style="text-align:center; color:var(--text-muted); font-size:13px; margin-bottom:28px;">
+        Recomendação: pese-se pela manhã, após ir ao banheiro e antes de comer ou beber.
+      </p>
+
+      <form id="form-pesagem">
+        <div class="field">
+          <input type="text" inputmode="decimal" id="peso" class="weight-input" placeholder="00,00" required>
+          <div style="text-align:center; color:var(--text-muted); font-size:13px; margin-top:4px;">kg</div>
+        </div>
+
+        <div id="alerta-janela" class="badge-janela" style="justify-content:center; margin-bottom:18px;"></div>
+
+        <div id="confirmacao-variacao" class="card" style="display:none; border-color:var(--danger);">
+          <p style="font-size:14px; margin:0 0 14px;" id="texto-variacao"></p>
+          <button type="button" class="btn btn-ghost" id="btn-confirmar-mesmo-assim">Confirmar e salvar mesmo assim</button>
+        </div>
+
+        <div id="erro" class="field-error" style="display:none; text-align:center;"></div>
+
+        <button type="submit" class="btn btn-primary" id="btn-registrar">Registrar peso</button>
+      </form>
+
+      <div id="offline-aviso" style="display:none; text-align:center; margin-top:16px; font-size:13px; color:var(--text-muted);">
+        📴 Você está offline — sua pesagem será salva e enviada quando a conexão voltar.
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" data-nav="dashboard"><span class="ic">🏠</span>Início</a>
+  <a href="ranking.html" data-nav="ranking"><span class="ic">🏆</span>Ranking</a>
+  <a href="pesagem.html" data-nav="pesagem" class="active"><span class="ic">⚖️</span>Pesar</a>
+  <a href="perfil.html" data-nav="perfil"><span class="ic">👤</span>Perfil</a>
+</nav>
+
+<script type="module">
+  import { requireAuth } from './js/services/auth.js';
+  import { getMyCompetitions } from './js/services/competition.js';
+  import { registerWeighIn } from './js/services/weighin.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+  marcarNavAtiva('pesagem');
+
+  const user = await requireAuth();
+  if (!user) throw new Error('não autenticado');
+
+  const minhas = await getMyCompetitions();
+  const ativa = (minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0]);
+
+  const alertaJanela = document.getElementById('alerta-janela');
+  if (ativa) {
+    const agora = new Date().toTimeString().slice(0, 5);
+    const dentro = agora >= ativa.competitions.janela_inicio?.slice(0,5) && agora <= ativa.competitions.janela_fim?.slice(0,5);
+    alertaJanela.innerHTML = dentro
+      ? `🟢 Dentro da janela recomendada (${ativa.competitions.janela_inicio?.slice(0,5)}–${ativa.competitions.janela_fim?.slice(0,5)})`
+      : `🟡 Fora da janela recomendada (${ativa.competitions.janela_inicio?.slice(0,5)}–${ativa.competitions.janela_fim?.slice(0,5)})`;
+  }
+
+  if (!navigator.onLine) {
+    document.getElementById('offline-aviso').style.display = 'block';
+  }
+
+  const form = document.getElementById('form-pesagem');
+  const erroBox = document.getElementById('erro');
+  const btn = document.getElementById('btn-registrar');
+  const boxVariacao = document.getElementById('confirmacao-variacao');
+  let pendenteConfirmacao = null;
+
+  async function salvar(confirmarVariacao = false) {
+    if (!ativa) {
+      erroBox.textContent = 'Você ainda não está inscrito em nenhuma competição.';
+      erroBox.style.display = 'block';
+      return;
+    }
+    erroBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const pesoBruto = document.getElementById('peso').value;
+    const resultado = await registerWeighIn({
+      competitionMemberId: ativa.id,
+      pesoBruto,
+      confirmarVariacao,
+    });
+
+    btn.disabled = false;
+    btn.textContent = 'Registrar peso';
+
+    if (resultado.status === 'invalid') {
+      erroBox.textContent = resultado.erro;
+      erroBox.style.display = 'block';
+      return;
+    }
+
+    if (resultado.status === 'needs_confirmation') {
+      pendenteConfirmacao = pesoBruto;
+      document.getElementById('texto-variacao').textContent = resultado.mensagem;
+      boxVariacao.style.display = 'block';
+      return;
+    }
+
+    boxVariacao.style.display = 'none';
+
+    if (resultado.status === 'queued_offline') {
+      mostrarToast('Sem conexão: sua pesagem foi salva e será enviada automaticamente.', 'info');
+    } else {
+      mostrarToast('Peso registrado com sucesso!', 'success');
+    }
+
+    setTimeout(() => { window.location.href = 'dashboard.html'; }, 900);
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    salvar(false);
+  });
+
+  document.getElementById('btn-confirmar-mesmo-assim').addEventListener('click', () => {
+    salvar(true);
+  });
+</script>
+</body>
+</html>

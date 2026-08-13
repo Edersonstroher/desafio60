@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ranking — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+    <a href="dashboard.html" data-nav="dashboard">🏠 Início</a>
+    <a href="pesagem.html" data-nav="pesagem">⚖️ Registrar peso</a>
+    <a href="ranking.html" data-nav="ranking" class="active">🏆 Ranking</a>
+    <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="perfil.html" data-nav="perfil">👤 Perfil</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <a href="dashboard.html" class="icon-btn">←</a>
+      <div class="brand"><strong>🏆 Ranking</strong></div>
+      <div style="width:38px;"></div>
+    </div>
+
+    <div class="container">
+      <div id="loading" class="state-box"><div class="ic">⏳</div>Carregando ranking...</div>
+
+      <div id="conteudo" style="display:none;">
+        <div style="display:flex; gap:8px; overflow-x:auto; margin-bottom:16px;" id="tabs-ranking">
+          <button class="btn btn-primary" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="oficial">Oficial (%)</button>
+          <button class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="kg">Kg perdidos</button>
+          <button class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="consistencia">Consistência</button>
+        </div>
+
+        <div class="card" style="padding:8px 16px;">
+          <div id="lista-ranking"></div>
+        </div>
+
+        <div class="card chart-card" style="margin-top:16px;">
+          <div class="card-eyebrow" style="padding-left:8px;">Comparação entre participantes</div>
+          <canvas id="grafico-comparacao" height="220"></canvas>
+        </div>
+      </div>
+
+      <div id="vazio" class="empty-state" style="display:none;">
+        <div class="ic">🏆</div>
+        <p>Você ainda não está em nenhuma competição ativa.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" data-nav="dashboard"><span class="ic">🏠</span>Início</a>
+  <a href="ranking.html" data-nav="ranking" class="active"><span class="ic">🏆</span>Ranking</a>
+  <a href="pesagem.html" data-nav="pesagem"><span class="ic">⚖️</span>Pesar</a>
+  <a href="perfil.html" data-nav="perfil"><span class="ic">👤</span>Perfil</a>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script type="module">
+  import { requireAuth } from './js/services/auth.js';
+  import { getMyCompetitions } from './js/services/competition.js';
+  import { getRanking } from './js/services/ranking.js';
+  import { getHistory } from './js/services/weighin.js';
+  import { formatarPercentual, formatarKg } from './js/calculations.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+  marcarNavAtiva('ranking');
+
+  const user = await requireAuth();
+  if (!user) throw new Error('não autenticado');
+
+  let rankingCompleto = [];
+
+  function renderLista(tipo) {
+    const ordenado = [...rankingCompleto].sort((a, b) => {
+      if (tipo === 'kg') return b.kg_perdidos - a.kg_perdidos;
+      if (tipo === 'consistencia') return b.consistencia_pct - a.consistencia_pct;
+      return a.posicao - b.posicao;
+    });
+
+    const medalhas = ['🥇', '🥈', '🥉'];
+    document.getElementById('lista-ranking').innerHTML = ordenado.map((r, i) => {
+      const valor = tipo === 'kg' ? formatarKg(r.kg_perdidos) : tipo === 'consistencia' ? `${Math.round(r.consistencia_pct)}%` : formatarPercentual(r.percentual_perdido);
+      const posClasse = i < 3 ? `pos-${i + 1}` : '';
+      return `
+        <div class="ranking-item ${posClasse}">
+          <div class="pos">${medalhas[i] || i + 1}</div>
+          <div class="avatar">${(r.apelido || r.nome || '?').charAt(0).toUpperCase()}</div>
+          <div class="nome">${r.apelido || r.nome}</div>
+          <div class="pct">${valor}</div>
+        </div>`;
+    }).join('') || '<p style="color:var(--text-muted); text-align:center; padding:20px 0;">Nenhuma pesagem registrada ainda.</p>';
+  }
+
+  document.getElementById('tabs-ranking').addEventListener('click', (e) => {
+    const btnEl = e.target.closest('button');
+    if (!btnEl) return;
+    document.querySelectorAll('#tabs-ranking button').forEach((b) => b.className = 'btn btn-ghost');
+    btnEl.className = 'btn btn-primary';
+    btnEl.style.width = 'auto'; btnEl.style.padding = '8px 16px'; btnEl.style.fontSize = '12px';
+    renderLista(btnEl.dataset.tipo);
+  });
+
+  try {
+    const minhas = await getMyCompetitions();
+    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (!ativa) {
+      document.getElementById('vazio').style.display = 'block';
+    } else {
+      rankingCompleto = await getRanking(ativa.competitions.id);
+      document.getElementById('conteudo').style.display = 'block';
+      renderLista('oficial');
+
+      // Gráfico de comparação: evolução percentual de cada participante
+      const historicos = await Promise.all(
+        rankingCompleto.slice(0, 8).map(async (r) => ({
+          nome: r.apelido || r.nome,
+          historico: await getHistory(r.competition_member_id),
+          pesoInicial: r.peso_inicial_kg,
+        }))
+      );
+
+      const cores = ['#B9FF3A', '#4FA3FF', '#FFC94D', '#E08D5C', '#C7CDD1', '#FF5C5C', '#9B7EDE', '#5CE0C6'];
+      const todasDatas = [...new Set(historicos.flatMap((h) => h.historico.map((w) => w.data_pesagem)))].sort();
+
+      const datasets = historicos.map((h, i) => ({
+        label: h.nome,
+        data: todasDatas.map((data) => {
+          const w = h.historico.find((x) => x.data_pesagem === data);
+          if (!w || !h.pesoInicial) return null;
+          return Math.round(((h.pesoInicial - w.peso_kg) / h.pesoInicial) * 10000) / 100;
+        }),
+        borderColor: cores[i % cores.length],
+        backgroundColor: cores[i % cores.length],
+        tension: 0.3,
+        spanGaps: true,
+      }));
+
+      new Chart(document.getElementById('grafico-comparacao'), {
+        type: 'line',
+        data: { labels: todasDatas.map((d) => d.slice(8,10) + '/' + d.slice(5,7)), datasets },
+        options: {
+          responsive: true,
+          plugins: { legend: { labels: { color: '#8B9591', font: { size: 11 } } } },
+          scales: {
+            x: { ticks: { color: '#8B9591', maxTicksLimit: 8 }, grid: { color: '#232B28' } },
+            y: { ticks: { color: '#8B9591', callback: (v) => v + '%' }, grid: { color: '#232B28' } },
+          },
+        },
+      });
+    }
+  } catch (err) {
+    document.getElementById('loading').style.display = 'none';
+    mostrarToast('Não foi possível carregar o ranking. Verifique sua conexão.', 'error');
+    console.error(err);
+  }
+</script>
+</body>
+</html>

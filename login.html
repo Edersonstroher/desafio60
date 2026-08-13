@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrar — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="container fade-in" style="padding-top:64px;">
+  <div style="text-align:center; margin-bottom:40px;">
+    <div style="font-size:44px;">🏆</div>
+    <h1 class="display" style="font-size:22px; letter-spacing:0.04em; margin-top:8px;">DESAFIO 60</h1>
+    <p style="color:var(--text-muted); font-size:13px; margin-top:6px;">Entre para ver seu ranking e registrar seu peso.</p>
+  </div>
+
+  <form id="form-login">
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" required autocomplete="email" placeholder="voce@exemplo.com">
+    </div>
+    <div class="field">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" required autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <div id="erro" class="field-error" style="display:none;"></div>
+    <button type="submit" class="btn btn-primary" id="btn-entrar">Entrar</button>
+  </form>
+
+  <p style="text-align:center; margin-top:20px; font-size:14px; color:var(--text-muted);">
+    Ainda não tem conta? <a href="cadastro.html" style="color:var(--accent); font-weight:600;">Criar conta</a>
+  </p>
+  <p style="text-align:center; margin-top:10px; font-size:13px;">
+    <a href="join.html" style="color:var(--text-muted);">Tenho um código de convite</a>
+  </p>
+</div>
+
+<script type="module">
+  import { supabase } from './js/supabase.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+
+  // Se já está logado, pula direto pro dashboard
+  supabase.auth.getUser().then(({ data }) => {
+    if (data.user) window.location.href = 'dashboard.html';
+  });
+
+  const form = document.getElementById('form-login');
+  const erroBox = document.getElementById('erro');
+  const btn = document.getElementById('btn-entrar');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    erroBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Entrando...';
+
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+
+    if (error) {
+      erroBox.textContent = error.message.includes('Invalid login')
+        ? 'E-mail ou senha incorretos.'
+        : 'Não foi possível entrar. Verifique sua conexão e tente novamente.';
+      erroBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Entrar';
+      return;
+    }
+
+    window.location.href = 'dashboard.html';
+  });
+</script>
+</body>
+</html>

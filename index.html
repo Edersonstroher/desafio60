@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div style="min-height:100vh; display:grid; place-items:center;">
+  <div style="font-size:44px;">🏆</div>
+</div>
+<script type="module">
+  import { supabase } from './js/supabase.js';
+  supabase.auth.getUser().then(({ data }) => {
+    window.location.href = data.user ? 'dashboard.html' : 'login.html';
+  });
+</script>
+</body>
+</html>

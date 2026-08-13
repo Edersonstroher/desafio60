@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+    <a href="dashboard.html" data-nav="dashboard" class="active">🏠 Início</a>
+    <a href="pesagem.html" data-nav="pesagem">⚖️ Registrar peso</a>
+    <a href="ranking.html" data-nav="ranking">🏆 Ranking</a>
+    <a href="competicao.html" data-nav="competicao">🗂️ Minhas competições</a>
+    <a href="perfil.html" data-nav="perfil">👤 Perfil</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <div class="brand"><span class="trophy">🏆</span> <strong>DESAFIO 60</strong></div>
+      <a href="perfil.html" class="icon-btn">👤</a>
+    </div>
+
+    <div class="container">
+      <div id="loading" class="state-box">
+        <div class="ic">⏳</div>
+        Carregando seu desempenho...
+      </div>
+
+      <div id="conteudo" style="display:none;">
+        <div class="day-progress">
+          <div class="label">
+            <span id="nome-competicao">—</span>
+            <span id="dia-atual" class="mono">DIA 0 / 60</span>
+          </div>
+          <div class="track"><div class="fill" id="barra-dia" style="width:0%"></div></div>
+        </div>
+
+        <div id="avisos"></div>
+
+        <div class="card card-posicao fade-in">
+          <div class="medalha" id="medalha">🥇</div>
+          <div class="info">
+            <strong id="texto-posicao">Você está em —º lugar</strong>
+            <span id="texto-total">de — participantes</span>
+          </div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-eyebrow">Desempenho</div>
+          <div class="stat-grid">
+            <div class="stat">
+              <span class="valor" id="peso-inicial">—</span>
+              <span class="rotulo">Peso inicial</span>
+            </div>
+            <div class="stat">
+              <span class="valor" id="peso-atual">—</span>
+              <span class="rotulo">Peso atual (média 7d)</span>
+            </div>
+            <div class="stat">
+              <span class="valor accent" id="kg-perdidos">—</span>
+              <span class="rotulo">Kg perdidos</span>
+            </div>
+            <div class="stat">
+              <span class="valor accent" id="pct-perdido">—</span>
+              <span class="rotulo">Percentual perdido</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card fade-in">
+          <div class="card-eyebrow">Consistência</div>
+          <div class="big-number" id="consistencia">—%</div>
+          <div class="progress-bar-mini"><div id="barra-consistencia" style="width:0%"></div></div>
+          <p style="font-size:12px; color:var(--text-muted); margin:10px 0 0;" id="texto-consistencia"></p>
+        </div>
+
+        <div class="card fade-in" id="card-distancia">
+          <div class="card-eyebrow">Distância para o líder</div>
+          <p id="texto-distancia" style="font-size:14px; margin:0;">—</p>
+        </div>
+
+        <div class="card fade-in" id="card-badges">
+          <div class="card-eyebrow">Conquistas</div>
+          <div class="badges-row" id="badges-row"></div>
+        </div>
+
+        <a href="pesagem.html" class="btn btn-primary" style="margin-top:6px;">⚖️ Registrar peso de hoje</a>
+      </div>
+
+      <div id="vazio" class="empty-state" style="display:none;">
+        <div class="ic">🏆</div>
+        <h3 style="font-size:16px; margin-bottom:6px;">Você ainda não está em nenhuma competição</h3>
+        <p>Peça um código de convite para entrar em uma competição.</p>
+        <a href="join.html" class="btn btn-primary" style="max-width:260px; margin:0 auto;">Tenho um código</a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html" data-nav="dashboard" class="active"><span class="ic">🏠</span>Início</a>
+  <a href="ranking.html" data-nav="ranking"><span class="ic">🏆</span>Ranking</a>
+  <a href="pesagem.html" data-nav="pesagem"><span class="ic">⚖️</span>Pesar</a>
+  <a href="perfil.html" data-nav="perfil"><span class="ic">👤</span>Perfil</a>
+</nav>
+
+<script type="module">
+  import { requireAuth, getCurrentProfile } from './js/services/auth.js';
+  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMemberStats, getRanking, calcularDistanciaParaLider } from './js/services/ranking.js';
+  import { calcularConquistas } from './js/achievements.js';
+  import { formatarKg, formatarPercentual, diaDaCompeticao } from './js/calculations.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, iniciarMonitorOffline, mostrarToast, registrarServiceWorker } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+  marcarNavAtiva('dashboard');
+  registrarServiceWorker();
+
+  const user = await requireAuth();
+  if (user) {
+    iniciarMonitorOffline();
+    try {
+      const perfil = await getCurrentProfile();
+      if (perfil?.tema) aplicarTema(perfil.tema);
+
+      const minhas = await getMyCompetitions();
+      const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+
+      document.getElementById('loading').style.display = 'none';
+
+      if (!ativa) {
+        document.getElementById('vazio').style.display = 'block';
+      } else {
+        const comp = ativa.competitions;
+        const ranking = await getRanking(comp.id);
+        const meuStats = ranking.find((r) => r.competition_member_id === ativa.id) || await getMemberStats(ativa.id);
+        const minhaPos = ranking.findIndex((r) => r.competition_member_id === ativa.id) + 1;
+        const lider = ranking[0];
+
+        document.getElementById('conteudo').style.display = 'block';
+        document.getElementById('nome-competicao').textContent = comp.nome;
+
+        const dia = Math.min(diaDaCompeticao(comp.data_inicio), comp.duracao_dias);
+        document.getElementById('dia-atual').textContent = `DIA ${dia} / ${comp.duracao_dias}`;
+        document.getElementById('barra-dia').style.width = `${Math.min(100, (dia / comp.duracao_dias) * 100)}%`;
+
+        const medalhas = ['🥇', '🥈', '🥉'];
+        document.getElementById('medalha').textContent = medalhas[minhaPos - 1] || '🏅';
+        document.getElementById('texto-posicao').textContent = minhaPos > 0 ? `Você está em ${minhaPos}º lugar` : 'Aguardando primeira pesagem';
+        document.getElementById('texto-total').textContent = `de ${ranking.length} participante${ranking.length !== 1 ? 's' : ''}`;
+
+        document.getElementById('peso-inicial').textContent = formatarKg(meuStats?.peso_inicial_kg);
+        document.getElementById('peso-atual').textContent = formatarKg(meuStats?.media_movel_7);
+        document.getElementById('kg-perdidos').textContent = formatarKg(meuStats?.kg_perdidos);
+        document.getElementById('pct-perdido').textContent = formatarPercentual(meuStats?.percentual_perdido);
+
+        const consist = Math.round(meuStats?.consistencia_pct || 0);
+        document.getElementById('consistencia').textContent = `${consist}%`;
+        document.getElementById('barra-consistencia').style.width = `${Math.min(100, consist)}%`;
+        document.getElementById('texto-consistencia').textContent = consist >= comp.consistencia_minima_pct
+          ? '✅ Você está elegível ao prêmio pela consistência.'
+          : `Mínimo de ${comp.consistencia_minima_pct}% de pesagens para concorrer ao prêmio.`;
+
+        if (lider && meuStats) {
+          const dist = calcularDistanciaParaLider(meuStats, lider);
+          document.getElementById('texto-distancia').textContent = dist?.jaELider
+            ? '🏆 Você é o líder da competição!'
+            : `${dist?.mensagem || ''} ${dist?.mensagemPeso || ''}`;
+        }
+
+        const badges = calcularConquistas(meuStats, { posicaoAtual: minhaPos });
+        const badgesRow = document.getElementById('badges-row');
+        if (badges.length === 0) {
+          badgesRow.innerHTML = '<span style="font-size:13px; color:var(--text-muted);">Continue registrando seu peso para desbloquear conquistas.</span>';
+        } else {
+          badgesRow.innerHTML = badges.map((b) => `<div class="badge-chip">${b.icone} ${b.texto}</div>`).join('');
+        }
+      }
+    } catch (err) {
+      document.getElementById('loading').style.display = 'none';
+      mostrarToast('Não foi possível carregar seus dados. Verifique sua conexão e tente novamente.', 'error');
+      console.error(err);
+    }
+  }
+</script>
+</body>
+</html>

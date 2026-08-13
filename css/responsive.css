@@ -1,0 +1,53 @@
+/* ===================================================================
+   RESPONSIVE — mobile é a base (style.css); aqui só ampliamos para
+   telas maiores (item 36: prioridade celular > tablet > desktop).
+   =================================================================== */
+
+@media (min-width: 640px) {
+  .container, .topbar { max-width: 600px; }
+  .stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (min-width: 900px) {
+  body { padding-bottom: 0; }
+  .bottom-nav { display: none; }
+
+  .app-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    max-width: 1080px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  .side-nav {
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .side-nav a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .side-nav a.active {
+    background: var(--bg-card);
+    color: var(--accent);
+  }
+
+  .container { max-width: 640px; padding-top: 32px; }
+  .topbar { display: none; }
+}
+
+@media (min-width: 1200px) {
+  .app-shell { max-width: 1240px; grid-template-columns: 260px 1fr; }
+  .container { max-width: 760px; }
+}

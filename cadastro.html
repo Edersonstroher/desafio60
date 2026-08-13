@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Criar conta — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="container fade-in" style="padding-top:48px;">
+  <div style="text-align:center; margin-bottom:32px;">
+    <div style="font-size:38px;">🏆</div>
+    <h1 class="display" style="font-size:20px; letter-spacing:0.04em; margin-top:8px;">CRIAR CONTA</h1>
+  </div>
+
+  <form id="form-cadastro">
+    <div class="field">
+      <label for="nome">Nome</label>
+      <input type="text" id="nome" required autocomplete="name" placeholder="Seu nome">
+    </div>
+    <div class="field">
+      <label for="email">E-mail</label>
+      <input type="email" id="email" required autocomplete="email" placeholder="voce@exemplo.com">
+    </div>
+    <div class="field">
+      <label for="senha">Senha</label>
+      <input type="password" id="senha" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+    </div>
+    <div class="field">
+      <label for="altura">Altura (cm) — opcional agora</label>
+      <input type="number" id="altura" min="80" max="250" placeholder="Ex: 175">
+    </div>
+    <div id="erro" class="field-error" style="display:none;"></div>
+    <button type="submit" class="btn btn-primary" id="btn-criar">Criar conta</button>
+  </form>
+
+  <p style="text-align:center; margin-top:20px; font-size:14px; color:var(--text-muted);">
+    Já tem conta? <a href="login.html" style="color:var(--accent); font-weight:600;">Entrar</a>
+  </p>
+</div>
+
+<script type="module">
+  import { supabase } from './js/supabase.js';
+  import { aplicarTema, temaSalvoLocalmente } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+
+  const form = document.getElementById('form-cadastro');
+  const erroBox = document.getElementById('erro');
+  const btn = document.getElementById('btn-criar');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    erroBox.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Criando conta...';
+
+    const nome = document.getElementById('nome').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const senha = document.getElementById('senha').value;
+    const altura = document.getElementById('altura').value;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: { data: { nome } },
+    });
+
+    if (error) {
+      erroBox.textContent = 'Não foi possível criar sua conta. ' + (error.message.includes('already registered') ? 'Esse e-mail já está cadastrado.' : 'Tente novamente.');
+      erroBox.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Criar conta';
+      return;
+    }
+
+    // Se altura foi informada, já grava no perfil recém-criado pelo trigger
+    if (altura && data.user) {
+      await supabase.from('profiles').update({ altura_cm: Number(altura) }).eq('id', data.user.id);
+    }
+
+    if (!data.session) {
+      // Projeto com confirmação de e-mail ativada
+      erroBox.style.display = 'block';
+      erroBox.style.color = 'var(--accent)';
+      erroBox.textContent = 'Conta criada! Verifique seu e-mail para confirmar antes de entrar.';
+      btn.disabled = false;
+      btn.textContent = 'Criar conta';
+      return;
+    }
+
+    window.location.href = 'dashboard.html';
+  });
+</script>
+</body>
+</html>

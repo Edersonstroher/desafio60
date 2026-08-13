@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entrar na competição — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="container fade-in" style="padding-top:56px;">
+  <div style="text-align:center; margin-bottom:28px;">
+    <div style="font-size:38px;">🎟️</div>
+    <h1 class="display" style="font-size:19px; margin-top:8px;">Entrar com convite</h1>
+  </div>
+
+  <div id="passo-codigo">
+    <div class="field">
+      <label for="codigo">Código do convite</label>
+      <input type="text" id="codigo" placeholder="DESAFIO60-ABC123" style="text-transform:uppercase;">
+    </div>
+    <div id="erro" class="field-error" style="display:none;"></div>
+    <button class="btn btn-primary" id="btn-buscar">Buscar competição</button>
+  </div>
+
+  <div id="passo-preview" class="card" style="display:none;">
+    <div class="card-eyebrow">Você foi convidado para</div>
+    <h2 class="display" id="p-nome" style="font-size:20px; margin-bottom:12px;"></h2>
+    <div class="stat-grid" style="margin-bottom:16px;">
+      <div class="stat"><span class="valor" id="p-duracao" style="font-size:18px;">—</span><span class="rotulo">Duração</span></div>
+      <div class="stat"><span class="valor" id="p-participantes" style="font-size:18px;">—</span><span class="rotulo">Participantes</span></div>
+      <div class="stat"><span class="valor" id="p-inicio" style="font-size:18px;">—</span><span class="rotulo">Início</span></div>
+      <div class="stat"><span class="valor" id="p-valor" style="font-size:18px;">—</span><span class="rotulo">Inscrição</span></div>
+    </div>
+    <button class="btn btn-primary" id="btn-participar">Participar</button>
+  </div>
+</div>
+
+<script type="module">
+  import { getCurrentUser } from './js/services/auth.js';
+  import { getCompetitionByInviteCode, joinCompetition } from './js/services/competition.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+
+  // Suporta tanto join.html?codigo=XXXX quanto acesso direto com preenchimento manual
+  const params = new URLSearchParams(window.location.search);
+  const codigoUrl = params.get('codigo');
+  if (codigoUrl) document.getElementById('codigo').value = codigoUrl;
+
+  let competicaoEncontrada = null;
+
+  async function buscar() {
+    const codigo = document.getElementById('codigo').value.trim();
+    const erroBox = document.getElementById('erro');
+    erroBox.style.display = 'none';
+    if (!codigo) return;
+
+    try {
+      const comp = await getCompetitionByInviteCode(codigo);
+      competicaoEncontrada = comp;
+      document.getElementById('p-nome').textContent = comp.nome;
+      document.getElementById('p-duracao').textContent = `${comp.duracao_dias}d`;
+      document.getElementById('p-participantes').textContent = comp.competition_members?.[0]?.count ?? '—';
+      document.getElementById('p-inicio').textContent = comp.data_inicio?.split('-').reverse().join('/');
+      document.getElementById('p-valor').textContent = comp.valor_inscricao > 0 ? `R$ ${comp.valor_inscricao}` : 'Grátis';
+      document.getElementById('passo-codigo').style.display = 'none';
+      document.getElementById('passo-preview').style.display = 'block';
+    } catch {
+      erroBox.textContent = 'Código de convite não encontrado.';
+      erroBox.style.display = 'block';
+    }
+  }
+
+  document.getElementById('btn-buscar').addEventListener('click', buscar);
+  if (codigoUrl) buscar();
+
+  document.getElementById('btn-participar').addEventListener('click', async () => {
+    const user = await getCurrentUser();
+    if (!user) {
+      window.location.href = `login.html?redirect=join.html&codigo=${competicaoEncontrada.codigo_convite}`;
+      return;
+    }
+    try {
+      await joinCompetition(competicaoEncontrada.id);
+      mostrarToast('Você entrou na competição!', 'success');
+      setTimeout(() => { window.location.href = 'dashboard.html'; }, 800);
+    } catch (err) {
+      mostrarToast('Não foi possível entrar na competição.', 'error');
+      console.error(err);
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Admin — Desafio 60</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0B0F0E">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="side-nav">
+    <div class="brand" style="margin-bottom:20px;"><span class="trophy">🏆</span> <strong>ADMIN</strong></div>
+    <a href="dashboard.html" data-nav="app">← Voltar ao app</a>
+  </nav>
+
+  <main>
+    <div class="topbar">
+      <a href="dashboard.html" class="icon-btn">←</a>
+      <div class="brand"><strong>Painel Admin</strong></div>
+      <div style="width:38px;"></div>
+    </div>
+
+    <div class="container">
+      <div id="bloqueado" class="state-box" style="display:none;">
+        <div class="ic">🔒</div>
+        Você não tem permissão de administrador.
+      </div>
+
+      <div id="conteudo" style="display:none;">
+        <div class="card">
+          <div class="card-eyebrow">Competições</div>
+          <div id="lista-competicoes"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-eyebrow">Criar nova competição</div>
+          <div class="field"><label>Nome</label><input type="text" id="nova-nome"></div>
+          <div class="field"><label>Descrição</label><input type="text" id="nova-desc"></div>
+          <div class="field"><label>Data de início</label><input type="date" id="nova-inicio"></div>
+          <div class="field"><label>Duração (dias)</label><input type="number" id="nova-duracao" value="60"></div>
+          <div class="field"><label>Valor de inscrição (R$)</label><input type="number" id="nova-valor" value="0" step="0.01"></div>
+          <button class="btn btn-primary" id="btn-criar">Criar competição (rascunho)</button>
+        </div>
+
+        <div class="card" id="card-gestao" style="display:none;">
+          <div class="card-eyebrow">Gerenciar: <span id="comp-selecionada-nome"></span></div>
+
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 12px;">Código de convite: <strong class="mono" id="comp-codigo"></strong></p>
+
+          <div class="field">
+            <label>Adicionar participante por e-mail</label>
+            <input type="email" id="add-email" placeholder="participante@exemplo.com">
+          </div>
+          <button class="btn btn-ghost" id="btn-add-participante" style="margin-bottom:18px;">Adicionar participante</button>
+
+          <div id="lista-membros"></div>
+
+          <div style="display:flex; gap:10px; margin-top:16px;">
+            <button class="btn btn-ghost" id="btn-ativar">Ativar</button>
+            <button class="btn btn-danger" id="btn-encerrar">Encerrar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-eyebrow">Logs de auditoria</div>
+          <div id="lista-logs"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script type="module">
+  import { requireAuth } from './js/services/auth.js';
+  import { isCurrentUserAdmin, getAuditLogs, addParticipantByEmail, finishCompetition } from './js/services/admin.js';
+  import { listAllCompetitionsAdmin, createCompetition, updateCompetition, getCompetitionMembers } from './js/services/competition.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+
+  aplicarTema(temaSalvoLocalmente());
+
+  const user = await requireAuth();
+  if (!user) throw new Error('não autenticado');
+
+  const souAdmin = await isCurrentUserAdmin();
+  if (!souAdmin) {
+    document.getElementById('bloqueado').style.display = 'block';
+  } else {
+    document.getElementById('conteudo').style.display = 'block';
+    let competicaoSelecionadaId = null;
+
+    async function carregarCompeticoes() {
+      const competicoes = await listAllCompetitionsAdmin();
+      document.getElementById('lista-competicoes').innerHTML = competicoes.map((c) => `
+        <div class="list-row">
+          <div>
+            <strong style="font-size:14px;">${c.nome}</strong><br>
+            <span style="font-size:12px; color:var(--text-muted);">${c.status} · ${c.competition_members?.[0]?.count ?? 0} participantes</span>
+          </div>
+          <button class="btn btn-ghost" style="width:auto; padding:6px 12px; font-size:12px;" data-selecionar="${c.id}">Gerenciar</button>
+        </div>`).join('') || '<p style="color:var(--text-muted); font-size:13px;">Nenhuma competição criada ainda.</p>';
+
+      document.querySelectorAll('[data-selecionar]').forEach((btnEl) => {
+        btnEl.addEventListener('click', () => selecionarCompeticao(btnEl.dataset.selecionar, competicoes));
+      });
+    }
+
+    async function selecionarCompeticao(id, competicoes) {
+      competicaoSelecionadaId = id;
+      const comp = competicoes.find((c) => c.id === id);
+      document.getElementById('card-gestao').style.display = 'block';
+      document.getElementById('comp-selecionada-nome').textContent = comp.nome;
+      document.getElementById('comp-codigo').textContent = comp.codigo_convite;
+
+      const membros = await getCompetitionMembers(id);
+      document.getElementById('lista-membros').innerHTML = membros.map((m) => `
+        <div class="list-row">
+          <span style="font-size:13px;">${m.profiles?.nome || '—'}</span>
+          <span class="tag ${m.status === 'ACTIVE' ? 'tag-active' : 'tag-waiting'}">${m.status}</span>
+        </div>`).join('') || '<p style="color:var(--text-muted); font-size:13px;">Nenhum participante ainda.</p>';
+
+      const logs = await getAuditLogs(id);
+      document.getElementById('lista-logs').innerHTML = logs.length
+        ? logs.slice(0, 20).map((l) => `
+            <div class="list-row">
+              <span style="font-size:12px;">${l.action} · ${l.profiles?.nome || '—'}</span>
+              <span style="font-size:11px; color:var(--text-muted);">${new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
+            </div>`).join('')
+        : '<p style="color:var(--text-muted); font-size:13px;">Sem alterações registradas.</p>';
+
+      document.getElementById('btn-ativar').onclick = async () => {
+        await updateCompetition(id, { status: 'ACTIVE' });
+        mostrarToast('Competição ativada!', 'success');
+        carregarCompeticoes();
+      };
+      document.getElementById('btn-encerrar').onclick = async () => {
+        await finishCompetition(id);
+        mostrarToast('Competição encerrada.', 'info');
+        carregarCompeticoes();
+      };
+    }
+
+    document.getElementById('btn-add-participante').addEventListener('click', async () => {
+      if (!competicaoSelecionadaId) return;
+      const email = document.getElementById('add-email').value.trim();
+      if (!email) return;
+      try {
+        await addParticipantByEmail(competicaoSelecionadaId, email);
+        mostrarToast('Participante adicionado!', 'success');
+        document.getElementById('add-email').value = '';
+        carregarCompeticoes();
+      } catch (err) {
+        mostrarToast(err.message || 'Não foi possível adicionar.', 'error');
+      }
+    });
+
+    document.getElementById('btn-criar').addEventListener('click', async () => {
+      const nome = document.getElementById('nova-nome').value.trim();
+      const dataInicio = document.getElementById('nova-inicio').value;
+      const duracao = Number(document.getElementById('nova-duracao').value) || 60;
+      if (!nome || !dataInicio) {
+        mostrarToast('Preencha nome e data de início.', 'error');
+        return;
+      }
+      const dataFim = new Date(dataInicio);
+      dataFim.setDate(dataFim.getDate() + duracao - 1);
+
+      try {
+        await createCompetition({
+          nome,
+          descricao: document.getElementById('nova-desc').value.trim() || null,
+          data_inicio: dataInicio,
+          data_fim: dataFim.toISOString().slice(0, 10),
+          duracao_dias: duracao,
+          valor_inscricao: Number(document.getElementById('nova-valor').value) || 0,
+          criado_por: user.id,
+          status: 'DRAFT',
+        });
+        mostrarToast('Competição criada!', 'success');
+        carregarCompeticoes();
+      } catch (err) {
+        mostrarToast('Não foi possível criar a competição.', 'error');
+        console.error(err);
+      }
+    });
+
+    carregarCompeticoes();
+  }
+</script>
+</body>
+</html>
