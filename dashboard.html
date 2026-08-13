@@ -156,6 +156,7 @@
 
 <script type="module">
   import { requireAuth, getCurrentProfile } from './js/services/auth.js';
+  import { isCurrentUserAdmin } from './js/services/admin.js';
   import { getMyCompetitions } from './js/services/competition.js';
   import { getMemberStats, getRanking, calcularDistanciaParaLider } from './js/services/ranking.js';
   import { calcularConquistas } from './js/achievements.js';
