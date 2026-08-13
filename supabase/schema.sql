@@ -220,7 +220,12 @@ as $$
   ) ultimas;
 $$;
 
--- Estatísticas completas de uma inscrição (usado no dashboard e no ranking)
+-- Estatísticas completas de uma inscrição (usado no dashboard e no ranking).
+-- SECURITY DEFINER de propósito: retorna só números agregados (média, %,
+-- consistência), nunca as pesagens em si — por isso é seguro qualquer
+-- membro da competição chamar essa função para ver o desempenho dos
+-- colegas (necessário para o ranking funcionar), mesmo sem ter permissão
+-- de SELECT direto na tabela weigh_ins de outra pessoa.
 drop function if exists public.fn_member_stats(uuid);
 create or replace function public.fn_member_stats(p_member_id uuid)
 returns table (
@@ -238,7 +243,7 @@ returns table (
   total_pesagens integer,
   ultima_pesagem_data date
 )
-language plpgsql stable
+language plpgsql stable security definer set search_path = public
 as $$
 declare
   v_member record;
