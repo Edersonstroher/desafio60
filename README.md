@@ -147,6 +147,44 @@ O frontend só lê esses resultados; nenhuma fórmula de ranking está duplicada
 - Offline: pesagens ficam em fila local (`localStorage`, não crítica) e sincronizam automaticamente ao reconectar — nunca aceitas como definitivas sem gravar no Supabase.
 - RLS: participante só altera a própria pesagem/perfil; nunca vê e-mail de outros participantes; nunca acessa `audit_logs`.
 
+## 11. Configurar notificações push (lembrete de pesagem)
+
+O app já envia notificação push diária — mesmo com o app fechado — pra quem ativar em **Perfil → 🔔 Lembrete de pesagem**. Faltam 4 passos manuais no Supabase pra ligar isso de verdade:
+
+### 11.1 Guardar as chaves VAPID como segredo da função
+
+No Supabase → **Edge Functions → Manage secrets** (ou **Project Settings → Edge Functions**), adicione:
+
+```
+VAPID_PUBLIC_KEY=BP88hy0_nmagS5l1t3nVFnFUMAYYSg17V_OzPUqa5Xkx5oUKUwc-UPwQ-JGF_4malQ6bCC25HZ8UMUCqM2efamg
+VAPID_PRIVATE_KEY=y8P1Io4xCb1ErvmDnXhTuyb4w_heqGQ0WMBVcUu3S20
+VAPID_SUBJECT=mailto:seu-email@exemplo.com
+```
+
+⚠️ A `VAPID_PRIVATE_KEY` é secreta — nunca cole ela em nenhum arquivo do frontend (`js/config.js` etc). `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` já ficam disponíveis automaticamente dentro de toda Edge Function, não precisa configurar.
+
+### 11.2 Rodar a parte nova do schema.sql
+
+A tabela `push_subscriptions` e as colunas `horario_lembrete`/`lembrete_ativo` em `profiles` já estão no `schema.sql` atualizado — rode o arquivo completo de novo no SQL Editor (é seguro, usa `if not exists`).
+
+### 11.3 Publicar a Edge Function
+
+No Supabase → **Edge Functions → Deploy a new function**, nomeie como `send-weigh-reminders` e cole o conteúdo de `supabase/functions/send-weigh-reminders/index.ts`.
+
+*(Se seu painel só aceitar deploy via linha de comando: `supabase functions deploy send-weigh-reminders`, usando o [Supabase CLI](https://supabase.com/docs/guides/cli).)*
+
+### 11.4 Agendar a execução (cron)
+
+No Supabase → **Database → Cron Jobs** (ou **Integrations → Cron**), crie um job que roda **de hora em hora** (`0 * * * *`) chamando a função via HTTP POST:
+
+```
+URL: https://fmdyucwcayfsuyecyyfd.supabase.co/functions/v1/send-weigh-reminders
+Método: POST
+Header: Authorization: Bearer <sua service_role key>
+```
+
+A função roda a cada hora e verifica sozinha quem configurou aquele horário exato — por isso o agendamento de hora em hora cobre qualquer horário que o participante escolher em "Horário do lembrete".
+
 ## Próximos passos (arquitetura já preparada, não implementado ainda)
 
-Pagamento/PIX, equipes, competições públicas, notificações push, integração WhatsApp, fotos de evolução, medidas corporais, % de gordura, patrocinadores — mantidos fora da v1 propositalmente (ver item 57 do briefing).
+Pagamento/PIX, equipes, competições públicas, integração WhatsApp, fotos de evolução, medidas corporais, % de gordura, patrocinadores — mantidos fora da v1 propositalmente (ver item 57 do briefing).

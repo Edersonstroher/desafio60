@@ -66,6 +66,22 @@
         </div>
       </div>
 
+      <div class="card">
+        <div class="card-eyebrow">🔔 Lembrete de pesagem</div>
+        <p style="font-size:13px; color:var(--text-muted); margin:0 0 14px;">
+          Receba uma notificação todo dia, mesmo com o app fechado, pra não esquecer de se pesar.
+        </p>
+        <div class="list-row">
+          <span>Notificações ativas</span>
+          <div class="switch" id="switch-lembrete"></div>
+        </div>
+        <div class="field" style="margin-top:14px; margin-bottom:0;">
+          <label for="horario-lembrete">Horário do lembrete</label>
+          <input type="time" id="horario-lembrete">
+        </div>
+        <p id="status-lembrete" style="font-size:12px; color:var(--text-muted); margin:10px 0 0;"></p>
+      </div>
+
       <button class="btn btn-ghost" id="btn-instalar-app" data-instalar-app style="margin-bottom:14px;">
         📲 Instalar app na tela inicial
       </button>
@@ -110,6 +126,7 @@
   import { getHistory } from './js/services/weighin.js';
   import { calcularIMC, formatarKg, formatarData } from './js/calculations.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin, capturarPromptDeInstalacao, acionarInstalacaoDoApp } from './js/app.js';
+  import { suportaPush, statusPermissao, ativarLembretePush, desativarLembretePush, salvarHorarioLembrete } from './js/services/push.js';
 
   marcarNavAtiva('perfil');
   const user = await requireAuth();
@@ -140,6 +157,53 @@
     const novoValor = !switchProvocacao.classList.contains('on');
     switchProvocacao.classList.toggle('on');
     await updateProfile({ modo_provocacao: novoValor });
+  });
+
+  // --- Lembrete de pesagem (notificação push) ---
+  const switchLembrete = document.getElementById('switch-lembrete');
+  const inputHorario = document.getElementById('horario-lembrete');
+  const statusLembrete = document.getElementById('status-lembrete');
+
+  inputHorario.value = (perfil.horario_lembrete || '08:00').slice(0, 5);
+
+  if (!suportaPush()) {
+    statusLembrete.textContent = 'Seu navegador não suporta notificações push.';
+    switchLembrete.style.opacity = '0.4';
+    switchLembrete.style.pointerEvents = 'none';
+  } else if (statusPermissao() === 'denied') {
+    statusLembrete.textContent = 'Notificações bloqueadas nas configurações do navegador. Ative manualmente para usar o lembrete.';
+  } else {
+    switchLembrete.classList.toggle('on', statusPermissao() === 'granted' && !!perfil.lembrete_ativo);
+  }
+
+  switchLembrete.addEventListener('click', async () => {
+    if (switchLembrete.style.pointerEvents === 'none') return;
+    const ativando = !switchLembrete.classList.contains('on');
+    statusLembrete.textContent = ativando ? 'Ativando...' : 'Desativando...';
+
+    if (ativando) {
+      const resultado = await ativarLembretePush();
+      if (resultado.ok) {
+        switchLembrete.classList.add('on');
+        statusLembrete.textContent = `Lembrete ativo — você recebe um aviso às ${inputHorario.value} se ainda não tiver se pesado.`;
+        mostrarToast('Notificações ativadas!', 'success');
+      } else {
+        statusLembrete.textContent = resultado.motivo;
+      }
+    } else {
+      await desativarLembretePush();
+      switchLembrete.classList.remove('on');
+      statusLembrete.textContent = 'Lembrete desativado.';
+    }
+  });
+
+  inputHorario.addEventListener('change', async () => {
+    try {
+      await salvarHorarioLembrete(inputHorario.value + ':00');
+      mostrarToast('Horário do lembrete atualizado!', 'success');
+    } catch {
+      mostrarToast('Não foi possível salvar o horário.', 'error');
+    }
   });
 
   document.getElementById('btn-salvar-perfil').addEventListener('click', async () => {

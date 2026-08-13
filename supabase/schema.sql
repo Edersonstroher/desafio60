@@ -199,6 +199,24 @@ create table if not exists public.audit_logs (
 create index if not exists idx_audit_competition on public.audit_logs(competition_id);
 
 -- =====================================================================
+-- 5.5 PUSH_SUBSCRIPTIONS — inscrições de notificação push do navegador
+-- =====================================================================
+alter table public.profiles add column if not exists horario_lembrete time not null default '08:00';
+alter table public.profiles add column if not exists lembrete_ativo boolean not null default true;
+
+create table if not exists public.push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles(id) on delete cascade,
+  endpoint    text not null unique,
+  p256dh      text not null,
+  auth        text not null,
+  user_agent  text,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists idx_push_subscriptions_user on public.push_subscriptions(user_id);
+
+-- =====================================================================
 -- FONTE ÚNICA DE CÁLCULO — functions e views
 -- Nenhuma fórmula deve existir duplicada no frontend.
 -- =====================================================================
@@ -327,6 +345,7 @@ alter table public.competitions enable row level security;
 alter table public.competition_members enable row level security;
 alter table public.weigh_ins enable row level security;
 alter table public.audit_logs enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 -- Helper: é admin?
 drop function if exists public.is_admin(uuid);
@@ -417,6 +436,21 @@ create policy "audit_select_admin" on public.audit_logs
 drop policy if exists "audit_insert_admin" on public.audit_logs;
 create policy "audit_insert_admin" on public.audit_logs
   for insert with check (public.is_admin());
+
+-- PUSH_SUBSCRIPTIONS: cada usuário só vê/gerencia a própria inscrição.
+-- Não existe policy de SELECT para outros usuários — a Edge Function de
+-- envio de lembretes usa a service_role key, que ignora RLS por padrão.
+drop policy if exists "push_subscriptions_select_own" on public.push_subscriptions;
+create policy "push_subscriptions_select_own" on public.push_subscriptions
+  for select using (user_id = auth.uid());
+
+drop policy if exists "push_subscriptions_insert_own" on public.push_subscriptions;
+create policy "push_subscriptions_insert_own" on public.push_subscriptions
+  for insert with check (user_id = auth.uid());
+
+drop policy if exists "push_subscriptions_delete_own" on public.push_subscriptions;
+create policy "push_subscriptions_delete_own" on public.push_subscriptions
+  for delete using (user_id = auth.uid());
 
 -- =====================================================================
 -- FUNÇÃO ADMIN: corrigir pesagem com auditoria obrigatória
