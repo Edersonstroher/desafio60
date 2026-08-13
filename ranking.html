@@ -113,30 +113,41 @@
     renderLista(btnEl.dataset.tipo);
   });
 
-  try {
-    const minhas = await getMyCompetitions();
-    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+  /**
+   * Desenha o gráfico de comparação. Isolado do carregamento do ranking:
+   * uma falha aqui (rede, participante sem histórico ainda, etc.) nunca
+   * deve esconder a lista de ranking que já carregou com sucesso.
+   */
+  async function renderGraficoComparacao(ranking) {
+    const cardGrafico = document.getElementById('grafico-comparacao')?.closest('.card');
+    try {
+      const totalPesagens = ranking.reduce((soma, r) => soma + (r.total_pesagens || 0), 0);
+      if (totalPesagens === 0) {
+        if (cardGrafico) {
+          cardGrafico.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:12px 0;">Ainda não há pesagens registradas para gerar o gráfico de comparação.</p>';
+        }
+        return;
+      }
 
-    document.getElementById('loading').style.display = 'none';
-
-    if (!ativa) {
-      document.getElementById('vazio').style.display = 'block';
-    } else {
-      rankingCompleto = await getRanking(ativa.competitions.id);
-      document.getElementById('conteudo').style.display = 'block';
-      renderLista('oficial');
-
-      // Gráfico de comparação: evolução percentual de cada participante
-      const historicos = await Promise.all(
-        rankingCompleto.slice(0, 8).map(async (r) => ({
-          nome: r.apelido || r.nome,
-          historico: await getHistory(r.competition_member_id),
-          pesoInicial: r.peso_inicial_kg,
-        }))
+      const resultados = await Promise.allSettled(
+        ranking.slice(0, 8).map((r) => getHistory(r.competition_member_id))
       );
+
+      const historicos = resultados.map((res, i) => ({
+        nome: ranking[i].apelido || ranking[i].nome,
+        historico: res.status === 'fulfilled' ? (res.value || []) : [],
+        pesoInicial: ranking[i].peso_inicial_kg,
+      }));
 
       const cores = ['#B9FF3A', '#4FA3FF', '#FFC94D', '#E08D5C', '#C7CDD1', '#FF5C5C', '#9B7EDE', '#5CE0C6'];
       const todasDatas = [...new Set(historicos.flatMap((h) => h.historico.map((w) => w.data_pesagem)))].sort();
+
+      if (todasDatas.length === 0) {
+        if (cardGrafico) {
+          cardGrafico.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:12px 0;">Ainda não há pesagens registradas para gerar o gráfico de comparação.</p>';
+        }
+        return;
+      }
 
       const datasets = historicos.map((h, i) => ({
         label: h.nome,
@@ -163,6 +174,27 @@
           },
         },
       });
+    } catch (err) {
+      console.error('Gráfico de comparação não pôde ser carregado:', err);
+      if (cardGrafico) {
+        cardGrafico.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:12px 0;">Não foi possível carregar o gráfico agora. O ranking acima continua válido.</p>';
+      }
+    }
+  }
+
+  try {
+    const minhas = await getMyCompetitions();
+    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+
+    document.getElementById('loading').style.display = 'none';
+
+    if (!ativa) {
+      document.getElementById('vazio').style.display = 'block';
+    } else {
+      rankingCompleto = await getRanking(ativa.competitions.id);
+      document.getElementById('conteudo').style.display = 'block';
+      renderLista('oficial');
+      await renderGraficoComparacao(rankingCompleto);
     }
   } catch (err) {
     document.getElementById('loading').style.display = 'none';
