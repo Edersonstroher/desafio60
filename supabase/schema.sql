@@ -291,7 +291,6 @@ drop view if exists public.view_ranking cascade;
 create view public.view_ranking as
 select
   cm.competition_id,
-  cm.id as competition_member_id,
   p.id as user_id,
   p.nome,
   p.apelido,
