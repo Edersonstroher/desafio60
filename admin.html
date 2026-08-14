@@ -143,9 +143,10 @@
   import { requireAuth } from './js/services/auth.js';
   import { isCurrentUserAdmin, getAuditLogs, addParticipantByEmail, finishCompetition } from './js/services/admin.js';
   import { listAllCompetitionsAdmin, createCompetition, updateCompetition, getCompetitionMembers } from './js/services/competition.js';
-  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
 
   const user = await requireAuth();
   if (!user) throw new Error('não autenticado');

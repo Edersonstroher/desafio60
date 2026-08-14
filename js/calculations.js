@@ -64,6 +64,15 @@ export function classificarIMC(imc) {
   return 'Obesidade grau III';
 }
 
+/** Faixa de peso considerada "normal" (IMC 18,5–24,9) para uma altura — apenas informativo, nunca prescritivo. */
+export function faixaDePesoSaudavel(alturaCm) {
+  if (!alturaCm) return null;
+  const alturaM = alturaCm / 100;
+  const min = Math.round(18.5 * alturaM * alturaM * 10) / 10;
+  const max = Math.round(24.9 * alturaM * alturaM * 10) / 10;
+  return { min, max };
+}
+
 export function formatarKg(valor) {
   if (valor == null || Number.isNaN(valor)) return '—';
   return `${valor.toFixed(2).replace('.', ',')} kg`;

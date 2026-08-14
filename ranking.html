@@ -70,12 +70,12 @@
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
   import { getMyCompetitions } from './js/services/competition.js';
-  import { getRanking } from './js/services/ranking.js';
-  import { getHistory } from './js/services/weighin.js';
+  import { getRanking, getMemberHistoryForChart } from './js/services/ranking.js';
   import { formatarPercentual, formatarKg } from './js/calculations.js';
-  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
   marcarNavAtiva('ranking');
 
   const user = await requireAuth();
@@ -137,7 +137,7 @@
       }
 
       const resultados = await Promise.allSettled(
-        ranking.slice(0, 8).map((r) => getHistory(r.competition_member_id))
+        ranking.slice(0, 8).map((r) => getMemberHistoryForChart(r.competition_member_id))
       );
 
       const historicos = resultados.map((res, i) => ({

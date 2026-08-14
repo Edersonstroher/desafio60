@@ -94,6 +94,8 @@
           <div class="stat"><span class="valor" id="p-consistencia">—</span><span class="rotulo">Consistência</span></div>
           <div class="stat"><span class="valor" id="p-sequencia">—</span><span class="rotulo">Melhor sequência</span></div>
         </div>
+        <p id="p-imc-classificacao" style="font-size:12px; color:var(--text-muted); margin:14px 0 0; padding-top:14px; border-top:1px solid var(--border);"></p>
+        <p id="p-faixa-saudavel" style="font-size:12px; color:var(--text-muted); margin:6px 0 0;"></p>
       </div>
 
       <div class="card chart-card">
@@ -124,11 +126,12 @@
   import { getMyCompetitions } from './js/services/competition.js';
   import { getMemberStats } from './js/services/ranking.js';
   import { getHistory } from './js/services/weighin.js';
-  import { calcularIMC, formatarKg, formatarData } from './js/calculations.js';
-  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin, capturarPromptDeInstalacao, acionarInstalacaoDoApp } from './js/app.js';
+  import { calcularIMC, classificarIMC, faixaDePesoSaudavel, formatarKg, formatarData } from './js/calculations.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin, registrarServiceWorker, acionarInstalacaoDoApp } from './js/app.js';
   import { suportaPush, statusPermissao, ativarLembretePush, desativarLembretePush, salvarHorarioLembrete } from './js/services/push.js';
 
   marcarNavAtiva('perfil');
+  registrarServiceWorker();
   const user = await requireAuth();
   if (!user) throw new Error('não autenticado');
 
@@ -220,7 +223,6 @@
   });
 
   document.getElementById('btn-sair').addEventListener('click', encerrarSessaoEVoltarLogin);
-  capturarPromptDeInstalacao();
   document.getElementById('btn-instalar-app').addEventListener('click', acionarInstalacaoDoApp);
 
   try {
@@ -234,6 +236,16 @@
       const imcAtual = calcularIMC(stats?.media_movel_7, perfil.altura_cm);
       document.getElementById('p-imc-inicial').textContent = imcInicial ?? '—';
       document.getElementById('p-imc-atual').textContent = imcAtual ?? '—';
+
+      if (imcAtual != null) {
+        document.getElementById('p-imc-classificacao').textContent =
+          `Classificação atual: ${classificarIMC(imcAtual)}.`;
+      }
+      const faixa = faixaDePesoSaudavel(perfil.altura_cm);
+      if (faixa) {
+        document.getElementById('p-faixa-saudavel').textContent =
+          `Faixa de peso considerada normal (IMC 18,5–24,9) para sua altura: ${formatarKg(faixa.min)} a ${formatarKg(faixa.max)}. Apenas uma referência informativa, não uma meta obrigatória.`;
+      }
       document.getElementById('p-consistencia').textContent = `${Math.round(stats?.consistencia_pct || 0)}%`;
       document.getElementById('p-sequencia').textContent = `${stats?.melhor_sequencia || 0}d`;
 

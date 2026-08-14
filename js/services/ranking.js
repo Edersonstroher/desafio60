@@ -35,6 +35,13 @@ export async function getCompetitionStats(competitionId) {
  * necessário para assumir a liderança. Deixado explícito como estimativa
  * matemática simples (item 19) — não é uma fórmula oficial de ranking.
  */
+/** Histórico de pesagens de qualquer membro da MESMA competição — usado no gráfico de comparação. */
+export async function getMemberHistoryForChart(competitionMemberId) {
+  const { data, error } = await supabase.rpc('fn_weighin_history', { p_member_id: competitionMemberId });
+  if (error) throw error;
+  return data || [];
+}
+
 export function calcularDistanciaParaLider(minhasStats, statsDoLider) {
   if (!minhasStats || !statsDoLider) return null;
   const diferencaPct = Math.round((statsDoLider.percentual_perdido - minhasStats.percentual_perdido) * 100) / 100;

@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { hora, minuto } = horaAtualEmBrasilia();
+  const { hora } = horaAtualEmBrasilia();
   const hoje = new Date().toISOString().slice(0, 10);
 
   // Só considera "no horário" quem tem horario_lembrete dentro da mesma
@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   // hora — veja README.md — para cobrir qualquer minuto configurado).
   const { data: perfis, error: erroPerfis } = await supabase
     .from('profiles')
-    .select('id, nome, horario_lembrete, lembrete_ativo, push_subscriptions(id, endpoint, p256dh, auth)')
+    .select('id, nome, apelido, horario_lembrete, lembrete_ativo, modo_provocacao, push_subscriptions(id, endpoint, p256dh, auth)')
     .eq('lembrete_ativo', true);
 
   if (erroPerfis) {
@@ -66,33 +66,28 @@ Deno.serve(async (req) => {
   const erros = [];
 
   for (const perfil of candidatos) {
-    // Verifica se já se pesou hoje em alguma competição ativa
+    // Encontra a inscrição ativa do participante e sua posição no ranking oficial
     const { data: membros } = await supabase
       .from('competition_members')
-      .select('id, competitions!inner(status)')
+      .select('id, competition_id, competitions!inner(status)')
       .eq('user_id', perfil.id)
       .eq('competitions.status', 'ACTIVE');
 
     if (!membros || membros.length === 0) { pulados++; continue; }
+    const membro = membros[0];
 
-    let jaPesouHoje = false;
-    for (const m of membros) {
-      const { data: pesagemHoje } = await supabase
-        .from('weigh_ins')
-        .select('id')
-        .eq('competition_member_id', m.id)
-        .eq('data_pesagem', hoje)
-        .maybeSingle();
-      if (pesagemHoje) { jaPesouHoje = true; break; }
-    }
+    const { data: pesagemHoje } = await supabase
+      .from('weigh_ins')
+      .select('id')
+      .eq('competition_member_id', membro.id)
+      .eq('data_pesagem', hoje)
+      .maybeSingle();
 
-    if (jaPesouHoje) { pulados++; continue; }
+    if (pesagemHoje) { pulados++; continue; }
 
-    const payload = JSON.stringify({
-      title: '⚖️ Hora de pesar!',
-      body: `${perfil.nome ? perfil.nome + ', ainda' : 'Ainda'} não vimos seu peso de hoje no Desafio 60.`,
-      url: '/pesagem.html',
-    });
+    const mensagem = await montarMensagem(supabase, perfil, membro);
+
+    const payload = JSON.stringify({ title: mensagem.title, body: mensagem.body, url: '/pesagem.html' });
 
     for (const sub of perfil.push_subscriptions) {
       try {
@@ -118,3 +113,62 @@ Deno.serve(async (req) => {
     { headers: { 'Content-Type': 'application/json' } }
   );
 });
+
+/**
+ * Monta o texto da notificação. Se a pessoa tem modo_provocacao ativado,
+ * usa o ranking atual para brincar de forma leve (nunca ofensiva) — ex.:
+ * avisando que está perdendo posição. Sem modo provocação, usa um aviso
+ * neutro e direto.
+ */
+async function montarMensagem(supabase, perfil, membro) {
+  const nome = perfil.apelido || perfil.nome || 'Você';
+  const neutro = {
+    title: '⚖️ Hora de pesar!',
+    body: `${nome}, ainda não vimos seu peso de hoje no Desafio 60.`,
+  };
+
+  if (!perfil.modo_provocacao) return neutro;
+
+  try {
+    const { data: ranking } = await supabase
+      .from('view_ranking_oficial')
+      .select('competition_member_id, apelido, nome, percentual_perdido, posicao')
+      .eq('competition_id', membro.competition_id)
+      .order('posicao', { ascending: true });
+
+    if (!ranking || ranking.length < 2) return neutro;
+
+    const minhaLinha = ranking.find((r) => r.competition_member_id === membro.id);
+    const lider = ranking[0];
+
+    // Se a pessoa nem apareceu no ranking ainda (zero pesagens), usa mensagem neutra de boas-vindas
+    if (!minhaLinha) return neutro;
+
+    const souLider = minhaLinha.competition_member_id === lider.competition_member_id;
+    const proximoAtras = ranking.find((r, i) => ranking[i - 1]?.competition_member_id === membro.id && r.percentual_perdido != null);
+
+    const templates = [];
+
+    if (souLider && proximoAtras) {
+      templates.push({
+        title: '🏆 Segura a liderança!',
+        body: `${nome}, você tá na frente, mas ${proximoAtras.apelido || proximoAtras.nome} não tira o olho de você. Bora pesar antes que ele(a) cole!`,
+      });
+    } else if (!souLider) {
+      const diferenca = Math.abs((lider.percentual_perdido || 0) - (minhaLinha.percentual_perdido || 0)).toFixed(2).replace('.', ',');
+      templates.push({
+        title: '😏 Alguém tá na frente...',
+        body: `${nome}, ${lider.apelido || lider.nome} tá ${diferenca} ponto% à sua frente. Vai deixar assim? Registra o peso!`,
+      });
+    }
+
+    templates.push({
+      title: '⏰ O relógio não para',
+      body: `${nome}, seus concorrentes já devem estar de olho na balança. E você?`,
+    });
+
+    return templates[Math.floor(Math.random() * templates.length)];
+  } catch {
+    return neutro;
+  }
+}

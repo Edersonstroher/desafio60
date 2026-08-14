@@ -48,9 +48,10 @@
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
   import { getMyCompetitions } from './js/services/competition.js';
-  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
   marcarNavAtiva('competicao');
 
   const user = await requireAuth();

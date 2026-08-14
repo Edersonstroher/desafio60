@@ -48,6 +48,7 @@ export function iniciarMonitorOffline() {
 
 /** Registra o service worker (PWA). */
 export function registrarServiceWorker() {
+  capturarPromptDeInstalacao();
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').then((reg) => {

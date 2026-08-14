@@ -309,6 +309,38 @@ begin
 end;
 $$;
 
+-- Histórico de pesagens (data + peso) de uma inscrição, para o gráfico de
+-- comparação entre participantes. SECURITY DEFINER pelo mesmo motivo de
+-- fn_member_stats: sem isso, um participante não-admin só enxergaria o
+-- próprio histórico (a RLS de weigh_ins bloqueia leitura direta da
+-- pesagem de outra pessoa), e o gráfico de comparação ficaria vazio.
+drop function if exists public.fn_weighin_history(uuid) cascade;
+create or replace function public.fn_weighin_history(p_member_id uuid)
+returns table (data_pesagem date, peso_kg numeric)
+language plpgsql stable security definer set search_path = public
+as $$
+declare
+  v_competition_id uuid;
+begin
+  select competition_id into v_competition_id
+  from public.competition_members where id = p_member_id;
+
+  if v_competition_id is null then
+    return;
+  end if;
+
+  if not (public.is_admin() or public.is_competition_member(v_competition_id)) then
+    raise exception 'Sem permissão para ver esse histórico';
+  end if;
+
+  return query
+  select w.data_pesagem, w.peso_kg
+  from public.weigh_ins w
+  where w.competition_member_id = p_member_id
+  order by w.data_pesagem asc;
+end;
+$$;
+
 -- View pública de ranking por competição (sem expor email)
 drop view if exists public.view_ranking cascade;
 create view public.view_ranking as

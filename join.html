@@ -44,9 +44,10 @@
 <script type="module">
   import { getCurrentUser } from './js/services/auth.js';
   import { getCompetitionByInviteCode, joinCompetition } from './js/services/competition.js';
-  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
 
   // Suporta tanto join.html?codigo=XXXX quanto acesso direto com preenchimento manual
   const params = new URLSearchParams(window.location.search);

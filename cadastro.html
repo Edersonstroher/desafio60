@@ -47,9 +47,10 @@
 
 <script type="module">
   import { supabase } from './js/supabase.js';
-  import { aplicarTema, temaSalvoLocalmente } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
 
   const form = document.getElementById('form-cadastro');
   const erroBox = document.getElementById('erro');

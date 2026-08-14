@@ -43,9 +43,10 @@
 
 <script type="module">
   import { supabase } from './js/supabase.js';
-  import { aplicarTema, temaSalvoLocalmente, mostrarToast } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
 
   // Se já está logado, pula direto pro dashboard
   supabase.auth.getUser().then(({ data }) => {

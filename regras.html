@@ -148,9 +148,10 @@
   import { requireAuth } from './js/services/auth.js';
   import { isCurrentUserAdmin } from './js/services/admin.js';
   import { getMyCompetitions } from './js/services/competition.js';
-  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva } from './js/app.js';
+  import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
+  registrarServiceWorker();
   marcarNavAtiva('regras');
 
   const user = await requireAuth();
