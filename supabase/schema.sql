@@ -222,7 +222,7 @@ create index if not exists idx_push_subscriptions_user on public.push_subscripti
 -- =====================================================================
 
 -- Média móvel das últimas até 7 pesagens válidas de uma inscrição, numa data de referência
-drop function if exists public.fn_moving_avg_7(uuid, date);
+drop function if exists public.fn_moving_avg_7(uuid, date) cascade;
 create or replace function public.fn_moving_avg_7(p_member_id uuid, p_ref_date date default current_date)
 returns numeric
 language sql stable
@@ -348,7 +348,7 @@ alter table public.audit_logs enable row level security;
 alter table public.push_subscriptions enable row level security;
 
 -- Helper: é admin?
-drop function if exists public.is_admin(uuid);
+drop function if exists public.is_admin(uuid) cascade;
 create or replace function public.is_admin(p_user_id uuid default auth.uid())
 returns boolean
 language sql stable security definer set search_path = public
@@ -357,7 +357,7 @@ as $$
 $$;
 
 -- Helper: é membro da competição?
-drop function if exists public.is_competition_member(uuid, uuid);
+drop function if exists public.is_competition_member(uuid, uuid) cascade;
 create or replace function public.is_competition_member(p_competition_id uuid, p_user_id uuid default auth.uid())
 returns boolean
 language sql stable security definer set search_path = public
@@ -455,7 +455,7 @@ create policy "push_subscriptions_delete_own" on public.push_subscriptions
 -- =====================================================================
 -- FUNÇÃO ADMIN: corrigir pesagem com auditoria obrigatória
 -- =====================================================================
-drop function if exists public.admin_correct_weighin(uuid, numeric, text);
+drop function if exists public.admin_correct_weighin(uuid, numeric, text) cascade;
 create or replace function public.admin_correct_weighin(p_weighin_id uuid, p_novo_peso numeric, p_motivo text)
 returns void
 language plpgsql security definer set search_path = public
