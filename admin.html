@@ -177,9 +177,17 @@
     async function selecionarCompeticao(id, competicoes) {
       competicaoSelecionadaId = id;
       const comp = competicoes.find((c) => c.id === id);
-      document.getElementById('card-gestao').style.display = 'block';
+      if (!comp) {
+        mostrarToast('Competição não encontrada. Atualize a página e tente de novo.', 'error');
+        return;
+      }
+
+      const cardGestao = document.getElementById('card-gestao');
+      cardGestao.style.display = 'block';
       document.getElementById('comp-selecionada-nome').textContent = comp.nome;
       document.getElementById('comp-codigo').textContent = comp.codigo_convite;
+      cardGestao.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
       // =====================================================
 // COPIAR CÓDIGO DO DESAFIO
 // =====================================================
@@ -238,31 +246,51 @@ document.getElementById('btn-copiar-link').onclick = async () => {
   }
 };
 
-      const membros = await getCompetitionMembers(id);
-      document.getElementById('lista-membros').innerHTML = membros.map((m) => `
-        <div class="list-row">
-          <span style="font-size:13px;">${m.profiles?.nome || '—'}</span>
-          <span class="tag ${m.status === 'ACTIVE' ? 'tag-active' : 'tag-waiting'}">${m.status}</span>
-        </div>`).join('') || '<p style="color:var(--text-muted); font-size:13px;">Nenhum participante ainda.</p>';
+      try {
+        const membros = await getCompetitionMembers(id);
+        document.getElementById('lista-membros').innerHTML = membros.map((m) => `
+          <div class="list-row">
+            <span style="font-size:13px;">${m.profiles?.nome || '—'}</span>
+            <span class="tag ${m.status === 'ACTIVE' ? 'tag-active' : 'tag-waiting'}">${m.status}</span>
+          </div>`).join('') || '<p style="color:var(--text-muted); font-size:13px;">Nenhum participante ainda.</p>';
+      } catch (err) {
+        console.error('Erro ao carregar participantes:', err);
+        document.getElementById('lista-membros').innerHTML = '<p style="color:var(--danger); font-size:13px;">Não foi possível carregar os participantes.</p>';
+      }
 
-      const logs = await getAuditLogs(id);
-      document.getElementById('lista-logs').innerHTML = logs.length
-        ? logs.slice(0, 20).map((l) => `
-            <div class="list-row">
-              <span style="font-size:12px;">${l.action} · ${l.profiles?.nome || '—'}</span>
-              <span style="font-size:11px; color:var(--text-muted);">${new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
-            </div>`).join('')
-        : '<p style="color:var(--text-muted); font-size:13px;">Sem alterações registradas.</p>';
+      try {
+        const logs = await getAuditLogs(id);
+        document.getElementById('lista-logs').innerHTML = logs.length
+          ? logs.slice(0, 20).map((l) => `
+              <div class="list-row">
+                <span style="font-size:12px;">${l.action} · ${l.profiles?.nome || '—'}</span>
+                <span style="font-size:11px; color:var(--text-muted);">${new Date(l.created_at).toLocaleDateString('pt-BR')}</span>
+              </div>`).join('')
+          : '<p style="color:var(--text-muted); font-size:13px;">Sem alterações registradas.</p>';
+      } catch (err) {
+        console.error('Erro ao carregar logs:', err);
+        document.getElementById('lista-logs').innerHTML = '<p style="color:var(--danger); font-size:13px;">Não foi possível carregar os logs.</p>';
+      }
 
       document.getElementById('btn-ativar').onclick = async () => {
-        await updateCompetition(id, { status: 'ACTIVE' });
-        mostrarToast('Competição ativada!', 'success');
-        carregarCompeticoes();
+        try {
+          await updateCompetition(id, { status: 'ACTIVE' });
+          mostrarToast('Competição ativada!', 'success');
+          carregarCompeticoes();
+        } catch (err) {
+          console.error(err);
+          mostrarToast('Não foi possível ativar a competição.', 'error');
+        }
       };
       document.getElementById('btn-encerrar').onclick = async () => {
-        await finishCompetition(id);
-        mostrarToast('Competição encerrada.', 'info');
-        carregarCompeticoes();
+        try {
+          await finishCompetition(id);
+          mostrarToast('Competição encerrada.', 'info');
+          carregarCompeticoes();
+        } catch (err) {
+          console.error(err);
+          mostrarToast('Não foi possível encerrar a competição.', 'error');
+        }
       };
     }
 
