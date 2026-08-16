@@ -519,3 +519,9 @@ $$;
 -- =====================================================================
 -- FIM DO SCHEMA
 -- =====================================================================
+
+-- Força o Supabase a atualizar imediatamente o "cache" da API (PostgREST)
+-- com as tabelas/funções/views criadas ou alteradas acima. Sem isso, uma
+-- função nova pode retornar erro "Could not find the function ... in the
+-- schema cache" por alguns instantes.
+notify pgrst, 'reload schema';

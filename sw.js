@@ -5,7 +5,7 @@
 // NUNCA faz cache de respostas da API do Supabase — dados sempre vêm da
 // rede (ou da fila offline local do weighin.js).
 
-const CACHE_NAME = 'desafio60-shell-v3';
+const CACHE_NAME = 'desafio60-shell-v4';
 
 const APP_SHELL = [
   '/', '/index.html', '/login.html', '/cadastro.html', '/dashboard.html',
@@ -13,6 +13,7 @@ const APP_SHELL = [
   '/admin.html', '/join.html', '/regras.html',
   '/css/style.css', '/css/responsive.css', '/css/components.css',
   '/manifest.json',
+  '/js/vendor/chart.umd.min.js',
 ];
 
 self.addEventListener('install', (event) => {
