@@ -98,6 +98,13 @@ button {
 /* ---------------------------------------------------------------------
    Layout
    --------------------------------------------------------------------- */
+/* Menu lateral é exclusivo de telas grandes (ver responsive.css, 900px+).
+   No mobile a navegação é feita pela bottom-nav — sem isso, o <nav> aparecia
+   como uma lista de links crua e sem estilo no topo de cada página. */
+.side-nav {
+  display: none;
+}
+
 .container {
   max-width: 480px;
   margin: 0 auto;
