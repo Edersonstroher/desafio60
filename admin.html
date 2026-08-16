@@ -130,6 +130,14 @@
           </div>
         </div>
 
+        <div class="card" id="card-pesagens" style="display:none;">
+          <div class="card-eyebrow">⚖️ Pesagens registradas</div>
+          <p style="font-size:12px; color:var(--text-muted); margin:0 0 14px;">
+            Corrigir um valor errado exige informar o motivo — a alteração fica registrada no log de auditoria abaixo, com o valor antigo e o novo.
+          </p>
+          <div id="lista-pesagens"></div>
+        </div>
+
         <div class="card">
           <div class="card-eyebrow">Logs de auditoria</div>
           <div id="lista-logs"></div>
@@ -141,7 +149,7 @@
 
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
-  import { isCurrentUserAdmin, getAuditLogs, addParticipantByEmail, finishCompetition } from './js/services/admin.js';
+  import { isCurrentUserAdmin, getAuditLogs, addParticipantByEmail, finishCompetition, getAllWeighIns, correctWeighIn, setEligibility } from './js/services/admin.js';
   import { listAllCompetitionsAdmin, createCompetition, updateCompetition, getCompetitionMembers } from './js/services/competition.js';
   import { aplicarTema, temaSalvoLocalmente, mostrarToast , registrarServiceWorker } from './js/app.js';
 
@@ -251,11 +259,74 @@ document.getElementById('btn-copiar-link').onclick = async () => {
         document.getElementById('lista-membros').innerHTML = membros.map((m) => `
           <div class="list-row">
             <span style="font-size:13px;">${m.profiles?.nome || '—'}</span>
-            <span class="tag ${m.status === 'ACTIVE' ? 'tag-active' : 'tag-waiting'}">${m.status}</span>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-muted);">
+                <input type="checkbox" data-elegivel="${m.id}" ${m.elegivel_premio ? 'checked' : ''}> Elegível ao prêmio
+              </label>
+              <span class="tag ${m.status === 'ACTIVE' ? 'tag-active' : 'tag-waiting'}">${m.status}</span>
+            </div>
           </div>`).join('') || '<p style="color:var(--text-muted); font-size:13px;">Nenhum participante ainda.</p>';
+
+        document.querySelectorAll('[data-elegivel]').forEach((chk) => {
+          chk.addEventListener('change', async () => {
+            try {
+              await setEligibility(chk.dataset.elegivel, chk.checked);
+              mostrarToast('Elegibilidade atualizada.', 'success');
+            } catch (err) {
+              console.error(err);
+              mostrarToast('Não foi possível atualizar a elegibilidade.', 'error');
+              chk.checked = !chk.checked;
+            }
+          });
+        });
       } catch (err) {
         console.error('Erro ao carregar participantes:', err);
         document.getElementById('lista-membros').innerHTML = '<p style="color:var(--danger); font-size:13px;">Não foi possível carregar os participantes.</p>';
+      }
+
+      try {
+        const cardPesagens = document.getElementById('card-pesagens');
+        cardPesagens.style.display = 'block';
+        const pesagens = await getAllWeighIns(id);
+        document.getElementById('lista-pesagens').innerHTML = pesagens.length
+          ? pesagens.slice(0, 40).map((w) => `
+              <div class="list-row">
+                <div>
+                  <span style="font-size:13px;">${w.competition_members?.profiles?.nome || '—'}</span><br>
+                  <span style="font-size:11px; color:var(--text-muted);">${w.data_pesagem?.split('-').reverse().join('/')} · ${w.peso_kg} kg ${w.dentro_da_janela ? '🟢' : '🟡'}</span>
+                </div>
+                <button class="btn btn-ghost" style="width:auto; padding:6px 12px; font-size:11px;" data-corrigir="${w.id}" data-peso-atual="${w.peso_kg}">Corrigir</button>
+              </div>`).join('')
+          : '<p style="color:var(--text-muted); font-size:13px;">Nenhuma pesagem registrada ainda.</p>';
+
+        document.querySelectorAll('[data-corrigir]').forEach((btnEl) => {
+          btnEl.addEventListener('click', async () => {
+            const pesoAtual = btnEl.dataset.pesoAtual;
+            const novoPeso = prompt(`Peso atual: ${pesoAtual} kg\n\nDigite o peso correto (kg):`, pesoAtual);
+            if (novoPeso === null) return;
+            const novoPesoNum = Number(String(novoPeso).replace(',', '.'));
+            if (!novoPesoNum || novoPesoNum <= 0) {
+              mostrarToast('Peso inválido.', 'error');
+              return;
+            }
+            const motivo = prompt('Motivo da correção (obrigatório):');
+            if (!motivo || !motivo.trim()) {
+              mostrarToast('É preciso informar o motivo da correção.', 'error');
+              return;
+            }
+            try {
+              await correctWeighIn(btnEl.dataset.corrigir, novoPesoNum, motivo.trim());
+              mostrarToast('Pesagem corrigida!', 'success');
+              selecionarCompeticao(id, competicoes);
+            } catch (err) {
+              console.error(err);
+              mostrarToast('Não foi possível corrigir a pesagem.', 'error');
+            }
+          });
+        });
+      } catch (err) {
+        console.error('Erro ao carregar pesagens:', err);
+        document.getElementById('lista-pesagens').innerHTML = '<p style="color:var(--danger); font-size:13px;">Não foi possível carregar as pesagens.</p>';
       }
 
       try {
