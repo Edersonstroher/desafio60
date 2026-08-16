@@ -140,6 +140,11 @@
         ranking.slice(0, 8).map((r) => getMemberHistoryForChart(r.competition_member_id))
       );
 
+      const falhas = resultados.filter((r) => r.status === 'rejected');
+      if (falhas.length > 0) {
+        console.error('Falhas ao buscar histórico para o gráfico:', falhas.map((f) => f.reason));
+      }
+
       const historicos = resultados.map((res, i) => ({
         nome: ranking[i].apelido || ranking[i].nome,
         historico: res.status === 'fulfilled' ? (res.value || []) : [],
@@ -151,7 +156,11 @@
 
       if (todasDatas.length === 0) {
         if (cardGrafico) {
-          cardGrafico.innerHTML = '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:12px 0;">Ainda não há pesagens registradas para gerar o gráfico de comparação.</p>';
+          const todasFalharam = falhas.length === resultados.length && resultados.length > 0;
+          const detalheErro = todasFalharam ? (falhas[0].reason?.message || String(falhas[0].reason)) : null;
+          cardGrafico.innerHTML = detalheErro
+            ? `<p style="color:var(--danger); font-size:12px; text-align:center; padding:12px 0;">Erro técnico (diagnóstico): ${detalheErro}</p>`
+            : '<p style="color:var(--text-muted); font-size:13px; text-align:center; padding:12px 0;">Ainda não há pesagens registradas para gerar o gráfico de comparação.</p>';
         }
         return;
       }
