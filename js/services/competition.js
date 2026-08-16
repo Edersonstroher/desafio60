@@ -61,6 +61,27 @@ export async function getMyCompetitions() {
   return unicas;
 }
 
+/**
+ * Escolhe qual competição usar nas telas (dashboard, ranking, pesagem, etc.).
+ * Se o usuário participa de mais de uma competição ATIVA ao mesmo tempo,
+ * respeita a última escolhida manualmente em "Minhas competições"
+ * (localStorage) em vez de sempre pegar a primeira encontrada — evita
+ * misturar dados entre competições (item 33 do briefing).
+ */
+export function escolherCompeticaoAtiva(minhas) {
+  const ativas = minhas.filter((m) => m.competitions?.status === 'ACTIVE');
+  if (ativas.length === 0) return minhas[0] || null;
+  if (ativas.length === 1) return ativas[0];
+
+  const idSalvo = localStorage.getItem('desafio60_competicao_ativa_id');
+  const escolhida = ativas.find((m) => m.competition_id === idSalvo);
+  return escolhida || ativas[0];
+}
+
+export function definirCompeticaoAtiva(competitionId) {
+  localStorage.setItem('desafio60_competicao_ativa_id', competitionId);
+}
+
 export async function getCompetition(competitionId) {
   const { data, error } = await supabase
     .from('competitions')

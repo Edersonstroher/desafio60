@@ -147,7 +147,7 @@
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
   import { isCurrentUserAdmin } from './js/services/admin.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, escolherCompeticaoAtiva } from './js/services/competition.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
@@ -166,7 +166,7 @@
 
   try {
     const minhas = await getMyCompetitions();
-    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+    const ativa = escolherCompeticaoAtiva(minhas);
     if (ativa) {
       const comp = ativa.competitions;
       document.getElementById('nome-competicao-regras').textContent = comp.nome;

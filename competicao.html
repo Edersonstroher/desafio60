@@ -47,7 +47,7 @@
 
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, definirCompeticaoAtiva } from './js/services/competition.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast , registrarServiceWorker } from './js/app.js';
 
   aplicarTema(temaSalvoLocalmente());
@@ -67,17 +67,35 @@
 
   try {
     const minhas = await getMyCompetitions();
+    const ativasSimultaneas = minhas.filter((m) => m.competitions.status === 'ACTIVE').length > 1;
+    const idAtivaSalva = localStorage.getItem('desafio60_competicao_ativa_id');
+
     document.getElementById('lista').innerHTML = minhas.length
-      ? minhas.map((m) => `
+      ? minhas.map((m) => {
+          const ehAtivaSelecionada = m.competitions.status === 'ACTIVE' && (idAtivaSalva ? m.competition_id === idAtivaSalva : true);
+          const mostrarSeletor = ativasSimultaneas && m.competitions.status === 'ACTIVE';
+          return `
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
               <h3 style="font-size:16px; font-family:var(--font-display);">🏆 ${m.competitions.nome}</h3>
               ${tagPorStatus[m.competitions.status] || ''}
             </div>
             <p style="font-size:13px; color:var(--text-muted); margin:0 0 12px;">${m.competitions.descricao || ''}</p>
-            <a href="dashboard.html" class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;">Ver desempenho</a>
-          </div>`).join('')
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <a href="dashboard.html" class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;">Ver desempenho</a>
+              ${mostrarSeletor ? `<button class="btn ${ehAtivaSelecionada ? 'btn-primary' : 'btn-ghost'}" style="width:auto; padding:8px 16px; font-size:12px;" data-definir-ativa="${m.competition_id}" ${ehAtivaSelecionada ? 'disabled' : ''}>${ehAtivaSelecionada ? '✓ Competição em uso' : 'Usar esta no app'}</button>` : ''}
+            </div>
+          </div>`;
+        }).join('')
       : '<div class="empty-state"><div class="ic">🏆</div><p>Você ainda não participa de nenhuma competição.</p></div>';
+
+    document.querySelectorAll('[data-definir-ativa]').forEach((btnEl) => {
+      btnEl.addEventListener('click', () => {
+        definirCompeticaoAtiva(btnEl.dataset.definirAtiva);
+        mostrarToast('Competição definida! O app vai usar essa a partir de agora.', 'success');
+        setTimeout(() => window.location.reload(), 700);
+      });
+    });
   } catch (err) {
     mostrarToast('Não foi possível carregar suas competições.', 'error');
     console.error(err);

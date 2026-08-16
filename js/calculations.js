@@ -90,6 +90,13 @@ export function formatarData(dataISO) {
   return `${dia}/${mes}/${ano}`;
 }
 
+/** Velocidade de evolução: kg perdidos por semana decorrida. Apenas informativo (item 18), não influencia ranking. */
+export function velocidadeEvolucao(kgPerdidos, diasDecorridos) {
+  if (kgPerdidos == null || !diasDecorridos) return null;
+  const semanas = diasDecorridos / 7;
+  if (semanas < 0.5) return null; // dados insuficientes na primeira semana
+  return Math.round((kgPerdidos / semanas) * 100) / 100;
+}
 export function diaDaCompeticao(dataInicioISO, hoje = new Date()) {
   const inicio = new Date(dataInicioISO + 'T00:00:00');
   const diffMs = hoje.setHours(0, 0, 0, 0) - inicio.setHours(0, 0, 0, 0);

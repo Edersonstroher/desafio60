@@ -96,6 +96,7 @@
         </div>
         <p id="p-imc-classificacao" style="font-size:12px; color:var(--text-muted); margin:14px 0 0; padding-top:14px; border-top:1px solid var(--border);"></p>
         <p id="p-faixa-saudavel" style="font-size:12px; color:var(--text-muted); margin:6px 0 0;"></p>
+        <p id="p-velocidade" style="font-size:12px; color:var(--text-muted); margin:6px 0 0;"></p>
       </div>
 
       <div class="card chart-card">
@@ -123,10 +124,10 @@
 <script src="js/vendor/chart.umd.min.js"></script>
 <script type="module">
   import { requireAuth, getCurrentProfile, updateProfile } from './js/services/auth.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, escolherCompeticaoAtiva } from './js/services/competition.js';
   import { getMemberStats } from './js/services/ranking.js';
   import { getHistory } from './js/services/weighin.js';
-  import { calcularIMC, classificarIMC, faixaDePesoSaudavel, formatarKg, formatarData } from './js/calculations.js';
+  import { calcularIMC, classificarIMC, faixaDePesoSaudavel, velocidadeEvolucao, formatarKg, formatarData } from './js/calculations.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast, encerrarSessaoEVoltarLogin, registrarServiceWorker, acionarInstalacaoDoApp } from './js/app.js';
   import { suportaPush, statusPermissao, ativarLembretePush, desativarLembretePush, salvarHorarioLembrete } from './js/services/push.js';
 
@@ -227,7 +228,7 @@
 
   try {
     const minhas = await getMyCompetitions();
-    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+    const ativa = escolherCompeticaoAtiva(minhas);
     if (ativa) {
       const stats = await getMemberStats(ativa.id);
       const historico = await getHistory(ativa.id);
@@ -248,6 +249,12 @@
       }
       document.getElementById('p-consistencia').textContent = `${Math.round(stats?.consistencia_pct || 0)}%`;
       document.getElementById('p-sequencia').textContent = `${stats?.melhor_sequencia || 0}d`;
+
+      const velocidade = velocidadeEvolucao(stats?.kg_perdidos, stats?.dias_decorridos);
+      if (velocidade != null) {
+        document.getElementById('p-velocidade').textContent =
+          `Velocidade de evolução: ${formatarKg(Math.abs(velocidade))} por semana ${velocidade >= 0 ? 'perdidos' : 'ganhos'} em média. Indicador informativo.`;
+      }
 
       document.getElementById('lista-historico').innerHTML = historico.length
         ? [...historico].reverse().slice(0, 15).map((w) => `

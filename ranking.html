@@ -39,6 +39,7 @@
           <button class="btn btn-primary" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="oficial">Oficial (%)</button>
           <button class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="kg">Kg perdidos</button>
           <button class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="consistencia">Consistência</button>
+          <button class="btn btn-ghost" style="width:auto; padding:8px 16px; font-size:12px;" data-tipo="evolucao">Evolução 7d</button>
         </div>
 
         <div class="card" style="padding:8px 16px;">
@@ -69,7 +70,7 @@
 <script src="js/vendor/chart.umd.min.js"></script>
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, escolherCompeticaoAtiva } from './js/services/competition.js';
   import { getRanking, getMemberHistoryForChart } from './js/services/ranking.js';
   import { formatarPercentual, formatarKg } from './js/calculations.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast , registrarServiceWorker } from './js/app.js';
@@ -82,17 +83,32 @@
   if (!user) throw new Error('não autenticado');
 
   let rankingCompleto = [];
+  let evolucao7dPorMembro = {}; // competition_member_id -> percentual evoluído nos últimos 7 dias (null = sem dados suficientes)
 
   function renderLista(tipo) {
     const ordenado = [...rankingCompleto].sort((a, b) => {
       if (tipo === 'kg') return b.kg_perdidos - a.kg_perdidos;
       if (tipo === 'consistencia') return b.consistencia_pct - a.consistencia_pct;
+      if (tipo === 'evolucao') {
+        const evA = evolucao7dPorMembro[a.competition_member_id];
+        const evB = evolucao7dPorMembro[b.competition_member_id];
+        if (evA == null && evB == null) return 0;
+        if (evA == null) return 1;
+        if (evB == null) return -1;
+        return evB - evA;
+      }
       return a.posicao - b.posicao;
     });
 
     const medalhas = ['🥇', '🥈', '🥉'];
     document.getElementById('lista-ranking').innerHTML = ordenado.map((r, i) => {
-      const valor = tipo === 'kg' ? formatarKg(r.kg_perdidos) : tipo === 'consistencia' ? `${Math.round(r.consistencia_pct)}%` : formatarPercentual(r.percentual_perdido);
+      let valor;
+      if (tipo === 'kg') valor = formatarKg(r.kg_perdidos);
+      else if (tipo === 'consistencia') valor = `${Math.round(r.consistencia_pct)}%`;
+      else if (tipo === 'evolucao') {
+        const ev = evolucao7dPorMembro[r.competition_member_id];
+        valor = ev == null ? '—' : formatarPercentual(ev);
+      } else valor = formatarPercentual(r.percentual_perdido);
       const posClasse = i < 3 ? `pos-${i + 1}` : '';
       const pesoAtual = r.media_movel_7 ?? r.peso_atual_kg;
       const subtitulo = pesoAtual != null
@@ -146,10 +162,31 @@
       }
 
       const historicos = resultados.map((res, i) => ({
+        id: ranking[i].competition_member_id,
         nome: ranking[i].apelido || ranking[i].nome,
         historico: res.status === 'fulfilled' ? (res.value || []) : [],
         pesoInicial: ranking[i].peso_inicial_kg,
       }));
+
+      // Evolução dos últimos 7 dias: compara a pesagem mais antiga com a mais
+      // recente dentro dessa janela (item 16 — apenas um ranking secundário).
+      evolucao7dPorMembro = {};
+      const hoje = new Date();
+      const seteDiasAtras = new Date(hoje);
+      seteDiasAtras.setDate(hoje.getDate() - 7);
+      for (const h of historicos) {
+        const dentroDaJanela = h.historico.filter((w) => new Date(w.data_pesagem + 'T00:00:00') >= seteDiasAtras);
+        if (dentroDaJanela.length >= 2) {
+          const primeira = dentroDaJanela[0].peso_kg;
+          const ultima = dentroDaJanela[dentroDaJanela.length - 1].peso_kg;
+          evolucao7dPorMembro[h.id] = primeira > 0 ? Math.round(((primeira - ultima) / primeira) * 10000) / 100 : null;
+        } else {
+          evolucao7dPorMembro[h.id] = null;
+        }
+      }
+      if (document.querySelector('#tabs-ranking button.btn-primary')?.dataset.tipo === 'evolucao') {
+        renderLista('evolucao');
+      }
 
       const cores = ['#B9FF3A', '#4FA3FF', '#FFC94D', '#E08D5C', '#C7CDD1', '#FF5C5C', '#9B7EDE', '#5CE0C6'];
       const todasDatas = [...new Set(historicos.flatMap((h) => h.historico.map((w) => w.data_pesagem)))].sort();
@@ -200,7 +237,7 @@
 
   try {
     const minhas = await getMyCompetitions();
-    const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+    const ativa = escolherCompeticaoAtiva(minhas);
 
     document.getElementById('loading').style.display = 'none';
 

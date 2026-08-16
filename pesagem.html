@@ -71,7 +71,7 @@
 
 <script type="module">
   import { requireAuth } from './js/services/auth.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, escolherCompeticaoAtiva } from './js/services/competition.js';
   import { registerWeighIn } from './js/services/weighin.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, mostrarToast , registrarServiceWorker } from './js/app.js';
 
@@ -83,7 +83,7 @@
   if (!user) throw new Error('não autenticado');
 
   const minhas = await getMyCompetitions();
-  const ativa = (minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0]);
+  const ativa = escolherCompeticaoAtiva(minhas);
 
   const alertaJanela = document.getElementById('alerta-janela');
   if (ativa) {

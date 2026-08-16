@@ -164,9 +164,10 @@
 <script type="module">
   import { requireAuth, getCurrentProfile } from './js/services/auth.js';
   import { isCurrentUserAdmin } from './js/services/admin.js';
-  import { getMyCompetitions } from './js/services/competition.js';
+  import { getMyCompetitions, escolherCompeticaoAtiva } from './js/services/competition.js';
   import { getMemberStats, getRanking, calcularDistanciaParaLider } from './js/services/ranking.js';
   import { calcularConquistas } from './js/achievements.js';
+  import { gerarMensagens } from './js/notifications.js';
   import { formatarKg, formatarPercentual, diaDaCompeticao } from './js/calculations.js';
   import { aplicarTema, temaSalvoLocalmente, marcarNavAtiva, iniciarMonitorOffline, mostrarToast, registrarServiceWorker } from './js/app.js';
 
@@ -199,7 +200,7 @@ if (souAdmin) {
       if (perfil?.tema) aplicarTema(perfil.tema);
 
       const minhas = await getMyCompetitions();
-      const ativa = minhas.find((m) => m.competitions.status === 'ACTIVE') || minhas[0];
+      const ativa = escolherCompeticaoAtiva(minhas);
 
       document.getElementById('loading').style.display = 'none';
 
@@ -250,6 +251,30 @@ if (souAdmin) {
         } else {
           badgesRow.innerHTML = badges.map((b) => `<div class="badge-chip">${b.icone} ${b.texto}</div>`).join('');
         }
+
+        // --- Mensagens internas (item 30/31): compara com a última posição salva localmente ---
+        const chaveStorage = `desafio60_ultima_posicao_${comp.id}`;
+        const posicaoAnterior = Number(localStorage.getItem(chaveStorage)) || null;
+        if (minhaPos > 0) localStorage.setItem(chaveStorage, String(minhaPos));
+
+        const jaPesouHoje = meuStats?.ultima_pesagem_data === new Date().toISOString().slice(0, 10);
+        const concorrenteProximo = ranking.find((r, i) => ranking[i - 1]?.competition_member_id === ativa.id);
+
+        const mensagens = gerarMensagens({
+          modoProvocacao: !!perfil?.modo_provocacao,
+          stats: meuStats,
+          posicaoAnterior,
+          posicaoAtual: minhaPos > 0 ? minhaPos : null,
+          ehLider: minhaPos === 1,
+          jaPesouHoje,
+          nomeConcorrenteProximo: concorrenteProximo?.apelido || concorrenteProximo?.nome,
+        });
+
+        const corPorTipo = { aviso: 'var(--gold)', positivo: 'var(--accent)', destaque: 'var(--accent)', provocacao: 'var(--info)' };
+        document.getElementById('avisos').innerHTML = mensagens.slice(0, 2).map((m) => `
+          <div class="card" style="padding:12px 16px; border-color:${corPorTipo[m.tipo] || 'var(--border)'}; margin-bottom:10px;">
+            <p style="margin:0; font-size:13px;">${m.texto}</p>
+          </div>`).join('');
       }
     } catch (err) {
       document.getElementById('loading').style.display = 'none';
